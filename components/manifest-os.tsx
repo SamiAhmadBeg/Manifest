@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { APPS } from '@/lib/apps'
+import { keyToSignal } from '@/lib/bci-controls'
+import type { MoviesView } from '@/lib/movies/types'
 import { TopBar } from '@/components/top-bar'
 import { AppCarousel } from '@/components/app-carousel'
-import { ControlsHint } from '@/components/controls-hint'
+import { ControlsHint, type ControlsMode } from '@/components/controls-hint'
 import { AppOpenView } from '@/components/app-open-view'
+import type { MoviesAppHandle } from '@/components/apps/movies/movies-app'
+import type { SnakeAppHandle } from '@/components/apps/snake/snake-app'
 import {
   NotificationPanel,
   type NotificationItem,
@@ -14,11 +18,16 @@ import {
 export function ManifestOS() {
   const [activeIndex, setActiveIndex] = useState(3)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [moviesView, setMoviesView] = useState<MoviesView | null>(null)
   const [note, setNote] = useState<NotificationItem>({
     id: 0,
     text: 'Emotiv not connected',
   })
   const noteId = useRef(1)
+  const moviesRef = useRef<MoviesAppHandle>(null)
+  const snakeRef = useRef<SnakeAppHandle>(null)
+
+  const openApp = openIndex !== null ? APPS[openIndex] : null
 
   const pushNote = useCallback((text: string) => {
     setNote({ id: noteId.current++, text })
@@ -55,14 +64,47 @@ export function ManifestOS() {
       if (current !== null) pushNote(`Exited ${APPS[current].name}`)
       return null
     })
+    setMoviesView(null)
   }, [pushNote])
+
+  const controlsMode: ControlsMode = (() => {
+    if (openIndex === null) return 'home'
+    if (openApp?.id === 'movies') {
+      if (moviesView === 'player') return 'movies-player'
+      if (moviesView === 'naming') return 'movies-naming'
+      return 'movies-library'
+    }
+    if (openApp?.id === 'snake') return 'snake'
+    return 'app'
+  })()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (openIndex !== null) {
-        if (e.key === 'Escape' || e.key.toLowerCase() === 'x') closeApp()
+        if (openApp?.id === 'movies') {
+          const handled = moviesRef.current?.handleKey(e.key) ?? false
+          if (handled) {
+            e.preventDefault()
+            return
+          }
+        }
+
+        if (openApp?.id === 'snake') {
+          const handled = snakeRef.current?.handleKey(e.key) ?? false
+          if (handled) {
+            e.preventDefault()
+            return
+          }
+        }
+
+        const signal = keyToSignal(e.key)
+        if (signal === 'exit') {
+          closeApp()
+          e.preventDefault()
+        }
         return
       }
+
       switch (e.key) {
         case 'ArrowLeft':
           goPrev()
@@ -81,11 +123,10 @@ export function ManifestOS() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [openIndex, goPrev, goNext, openActive, closeApp, pushNote])
+  }, [openIndex, openApp, goPrev, goNext, openActive, closeApp, pushNote])
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-background">
-      {/* Clean, subtle backdrop */}
       <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute inset-0 opacity-[0.5]"
@@ -99,7 +140,6 @@ export function ManifestOS() {
 
       <TopBar />
 
-      {/* Carousel stage */}
       <div className="absolute inset-0 z-10 flex items-center justify-center [isolation:isolate]">
         <div className="h-[420px] w-full">
           <AppCarousel
@@ -114,11 +154,16 @@ export function ManifestOS() {
       </div>
 
       <NotificationPanel item={note} />
-      <ControlsHint isOpen={openIndex !== null} />
+      <ControlsHint mode={controlsMode} />
 
       <AppOpenView
-        app={openIndex !== null ? APPS[openIndex] : null}
+        app={openApp}
         onClose={closeApp}
+        onNotify={pushNote}
+        moviesRef={moviesRef}
+        snakeRef={snakeRef}
+        onMoviesViewChange={(view) => setMoviesView(view)}
+        moviesView={moviesView}
       />
     </main>
   )
