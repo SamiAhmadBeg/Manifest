@@ -10,6 +10,7 @@ import { ControlsHint, type ControlsMode } from '@/components/controls-hint'
 import { AppOpenView } from '@/components/app-open-view'
 import type { MoviesAppHandle } from '@/components/apps/movies/movies-app'
 import type { SnakeAppHandle } from '@/components/apps/snake/snake-app'
+import type { SmartRoomAppHandle } from '@/components/apps/smart-room/smart-room-app'
 import {
   NotificationPanel,
   type NotificationItem,
@@ -26,6 +27,7 @@ export function ManifestOS() {
   const noteId = useRef(1)
   const moviesRef = useRef<MoviesAppHandle>(null)
   const snakeRef = useRef<SnakeAppHandle>(null)
+  const smartRoomRef = useRef<SmartRoomAppHandle>(null)
 
   const openApp = openIndex !== null ? APPS[openIndex] : null
 
@@ -75,6 +77,7 @@ export function ManifestOS() {
       return 'movies-library'
     }
     if (openApp?.id === 'snake') return 'snake'
+    if (openApp?.id === 'smartroom') return 'smart-room'
     return 'app'
   })()
 
@@ -91,6 +94,14 @@ export function ManifestOS() {
 
         if (openApp?.id === 'snake') {
           const handled = snakeRef.current?.handleKey(e.key) ?? false
+          if (handled) {
+            e.preventDefault()
+            return
+          }
+        }
+
+        if (openApp?.id === 'smartroom') {
+          const handled = smartRoomRef.current?.handleKey(e.key) ?? false
           if (handled) {
             e.preventDefault()
             return
@@ -162,6 +173,7 @@ export function ManifestOS() {
         onNotify={pushNote}
         moviesRef={moviesRef}
         snakeRef={snakeRef}
+        smartRoomRef={smartRoomRef}
         onMoviesViewChange={(view) => setMoviesView(view)}
         moviesView={moviesView}
       />
