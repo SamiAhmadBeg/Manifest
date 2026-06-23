@@ -8,6 +8,10 @@ import {
   type MoviesAppHandle,
 } from '@/components/apps/movies/movies-app'
 import { SnakeApp, type SnakeAppHandle } from '@/components/apps/snake/snake-app'
+import {
+  SmartRoomApp,
+  type SmartRoomAppHandle,
+} from '@/components/apps/smart-room/smart-room-app'
 import type { MoviesView } from '@/lib/movies/types'
 
 export function AppOpenView({
@@ -16,6 +20,7 @@ export function AppOpenView({
   onNotify,
   moviesRef,
   snakeRef,
+  smartRoomRef,
   onMoviesViewChange,
   moviesView,
 }: {
@@ -24,6 +29,7 @@ export function AppOpenView({
   onNotify: (text: string) => void
   moviesRef: React.RefObject<MoviesAppHandle | null>
   snakeRef: React.RefObject<SnakeAppHandle | null>
+  smartRoomRef: React.RefObject<SmartRoomAppHandle | null>
   onMoviesViewChange: (view: MoviesView | null) => void
   moviesView: MoviesView | null
 }) {
@@ -67,6 +73,12 @@ export function AppOpenView({
               />
             ) : app.id === 'snake' ? (
               <SnakeApp ref={snakeRef} onClose={onClose} onNotify={onNotify} />
+            ) : app.id === 'smartroom' ? (
+              <SmartRoomApp
+                ref={smartRoomRef}
+                onClose={onClose}
+                onNotify={onNotify}
+              />
             ) : (
               <GenericAppContent app={app} onClose={onClose} />
             )}
