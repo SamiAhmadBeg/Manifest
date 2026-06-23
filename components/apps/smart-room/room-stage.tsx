@@ -78,13 +78,13 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
         {fdev === 'fan' && <div className="absolute -inset-2" style={HALO} />}
         <div
           className={`relative grid h-full w-full place-items-center rounded-full border ${
-            state.fanOn ? 'animate-spin motion-reduce:animate-none' : ''
+            state.fan !== 'off' ? 'animate-spin motion-reduce:animate-none' : ''
           }`}
           style={{
-            borderColor: state.fanOn ? 'var(--primary)' : '#c4c9d2',
+            borderColor: state.fan !== 'off' ? 'var(--primary)' : '#c4c9d2',
             boxShadow: '0 3px 8px rgba(20,22,30,0.10)',
             background: '#ffffff',
-            animationDuration: state.fanOn ? '3s' : undefined,
+            animationDuration: state.fan !== 'off' ? '3s' : undefined,
           }}
         >
           <div
@@ -92,7 +92,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
               width: 16,
               height: 2,
               borderRadius: 2,
-              background: state.fanOn ? 'var(--primary)' : '#c4c9d2',
+              background: state.fan !== 'off' ? 'var(--primary)' : '#c4c9d2',
             }}
           />
           <div
@@ -101,7 +101,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
               width: 2,
               height: 16,
               borderRadius: 2,
-              background: state.fanOn ? 'var(--primary)' : '#c4c9d2',
+              background: state.fan !== 'off' ? 'var(--primary)' : '#c4c9d2',
             }}
           />
         </div>
@@ -137,8 +137,8 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
         <div
           className={`h-full w-full rounded-md border ${EASE_FAST}`}
           style={{
-            borderColor: state.speakerOn ? 'var(--primary)' : '#c4c9d2',
-            background: state.speakerOn
+            borderColor: state.speaker === 'on' ? 'var(--primary)' : '#c4c9d2',
+            background: state.speaker === 'on'
               ? 'rgba(226,59,46,0.14)'
               : 'linear-gradient(#fbfbfd,#e9ebf0)',
             boxShadow: '0 4px 9px rgba(20,22,30,0.12)',

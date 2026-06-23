@@ -1,15 +1,17 @@
 export type SceneId = 'movie' | 'focus' | 'sleep' | 'alloff'
 export type DeviceId = 'lights' | 'fan' | 'blinds' | 'speaker'
 
-export type Lights = 'off' | 'dim' | 'on'
-export type Blinds = 'open' | 'closed'
+export type Lights  = 'off' | 'dim' | 'on'
+export type Fan     = 'off' | 'low' | 'high'
+export type Blinds  = 'open' | 'closed'
+export type Speaker = 'off' | 'on'
 
 export interface SmartRoomState {
   activeScene: SceneId | 'manual'
   lights: Lights
-  fanOn: boolean
+  fan: Fan
   blinds: Blinds
-  speakerOn: boolean
+  speaker: Speaker
   focusIndex: number
 }
 

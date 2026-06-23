@@ -7,9 +7,10 @@ import {
   initialState,
   focusPrev,
   focusNext,
-  activate,
+  cycle,
   focusedItem,
   focusLabel,
+  deviceValue,
   SCENE_LABELS,
 } from '@/lib/smart-room/state'
 import type { SmartRoomState, DeviceId } from '@/lib/smart-room/types'
@@ -23,16 +24,7 @@ export type SmartRoomAppProps = {
 }
 
 function describeToggle(state: SmartRoomState, id: DeviceId): string {
-  switch (id) {
-    case 'lights':
-      return state.lights === 'off' ? 'off' : 'on'
-    case 'fan':
-      return state.fanOn ? 'on' : 'off'
-    case 'blinds':
-      return state.blinds
-    case 'speaker':
-      return state.speakerOn ? 'on' : 'off'
-  }
+  return deviceValue(state, id)
 }
 
 export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
@@ -60,7 +52,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
         }
         if (signal === 'jaw-clench') {
           const item = focusedItem(state)
-          const next = activate(state)
+          const next = cycle(state, 1)
           onNotify(
             item.kind === 'scene'
               ? `${SCENE_LABELS[item.id]} scene`
