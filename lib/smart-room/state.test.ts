@@ -101,4 +101,10 @@ describe('isDeviceActive', () => {
   it('returns false for lights when off', () => {
     expect(isDeviceActive(applyScene(initialState(), 'sleep'), 'lights')).toBe(false)
   })
+  it('returns true for blinds when closed (inverted semantics)', () => {
+    expect(isDeviceActive(applyScene(initialState(), 'movie'), 'blinds')).toBe(true)
+  })
+  it('returns false for blinds when open', () => {
+    expect(isDeviceActive(applyScene(initialState(), 'focus'), 'blinds')).toBe(false)
+  })
 })
