@@ -10,6 +10,7 @@ import {
   Disc3,
   Map,
   Gamepad2,
+  House,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -32,4 +33,5 @@ export const APPS: ManifestApp[] = [
   { id: 'assistant', name: 'AI Assistant', tagline: 'Ready', icon: Sparkles },
   { id: 'music', name: 'Music', tagline: 'Library', icon: Disc3 },
   { id: 'maps', name: 'Maps', tagline: 'Nearby', icon: Map },
+  { id: 'smartroom', name: 'Smart Room', tagline: 'Set the scene', icon: House },
 ]
