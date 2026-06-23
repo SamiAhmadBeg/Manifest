@@ -59,21 +59,19 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
           return true
         }
         if (signal === 'jaw-clench') {
-          setState((s) => {
-            const item = focusedItem(s)
-            const n = activate(s)
-            onNotify(
-              item.kind === 'scene'
-                ? `${SCENE_LABELS[item.id]} scene`
-                : `${focusLabel(s)} ${describeToggle(n, item.id)}`,
-            )
-            return n
-          })
+          const item = focusedItem(state)
+          const next = activate(state)
+          onNotify(
+            item.kind === 'scene'
+              ? `${SCENE_LABELS[item.id]} scene`
+              : `${focusLabel(state)} ${describeToggle(next, item.id)}`,
+          )
+          setState(next)
           return true
         }
         return false
       },
-      [onClose, onNotify],
+      [state, onClose, onNotify],
     )
 
     useImperativeHandle(ref, () => ({ handleKey }), [handleKey])

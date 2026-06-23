@@ -9,6 +9,8 @@ import {
 } from '@/lib/smart-room/state'
 import type { SmartRoomState } from '@/lib/smart-room/types'
 
+const DEVICE_START = FOCUS_ORDER.findIndex((item) => item.kind === 'device')
+
 const GROUP_LABEL =
   'text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60'
 
@@ -23,7 +25,7 @@ export function ControlRail({ state }: { state: SmartRoomState }) {
         const active = item.kind === 'device' && isDeviceActive(state, item.id)
         return (
           <Fragment key={`${item.kind}-${item.id}`}>
-            {i === 4 && (
+            {i === DEVICE_START && (
               <>
                 <span className="mx-1 h-4 w-px bg-border" />
                 <span className={GROUP_LABEL}>Devices</span>

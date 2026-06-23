@@ -1,10 +1,10 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import type { SmartRoomState, Lights } from '@/lib/smart-room/types'
+import type { SmartRoomState, Lights, SceneId } from '@/lib/smart-room/types'
 import { focusedItem } from '@/lib/smart-room/state'
 
-const STAGE_BG: Record<string, string> = {
+const STAGE_BG: Record<SceneId | 'manual', string> = {
   movie: 'linear-gradient(180deg, #efe7db, #e7dccd)',
   sleep: 'linear-gradient(180deg, #e9ebf1, #dfe2eb)',
   focus: '#ffffff',
@@ -44,7 +44,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
   return (
     <div
       className={`relative w-full max-w-lg overflow-hidden rounded-[1.25rem] border border-border shadow-inner ${EASE_SLOW}`}
-      style={{ aspectRatio: '16 / 10', background: STAGE_BG[state.activeScene] ?? '#ffffff' }}
+      style={{ aspectRatio: '16 / 10', background: STAGE_BG[state.activeScene] }}
     >
       {/* wall -> floor horizon */}
       <div className="pointer-events-none absolute inset-x-0 top-[64%] h-px bg-black/[0.06]" />
