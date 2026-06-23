@@ -115,6 +115,7 @@ import {
   focusNext,
   focusedItem,
   activate,
+  isDeviceActive,
   FOCUS_ORDER,
 } from './state'
 
@@ -182,6 +183,31 @@ describe('activate', () => {
     const s = activate({ ...base, focusIndex: 5 }) // index 5 = fan
     expect(s.fanOn).toBe(true)
     expect(s.activeScene).toBe('manual')
+  })
+})
+
+describe('state invariants', () => {
+  it('re-applying the same scene yields the same device state', () => {
+    const once = applyScene(initialState(), 'movie')
+    const twice = applyScene(once, 'movie')
+    expect(twice).toEqual(once)
+  })
+  it('applyScene preserves focusIndex', () => {
+    const base = { ...initialState(), focusIndex: 6 }
+    expect(applyScene(base, 'sleep').focusIndex).toBe(6)
+  })
+  it('toggleDevice preserves focusIndex', () => {
+    const base = { ...initialState(), focusIndex: 5 }
+    expect(toggleDevice(base, 'fan').focusIndex).toBe(5)
+  })
+})
+
+describe('isDeviceActive', () => {
+  it('returns true for lights when dim', () => {
+    expect(isDeviceActive(applyScene(initialState(), 'movie'), 'lights')).toBe(true)
+  })
+  it('returns false for lights when off', () => {
+    expect(isDeviceActive(applyScene(initialState(), 'sleep'), 'lights')).toBe(false)
   })
 })
 ```
@@ -345,6 +371,7 @@ Create `components/apps/smart-room/control-rail.tsx`:
 ```tsx
 'use client'
 
+import { Fragment } from 'react'
 import {
   FOCUS_ORDER,
   SCENE_LABELS,
@@ -353,25 +380,24 @@ import {
 } from '@/lib/smart-room/state'
 import type { SmartRoomState } from '@/lib/smart-room/types'
 
+const GROUP_LABEL =
+  'text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60'
+
 export function ControlRail({ state }: { state: SmartRoomState }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
-      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60">
-        Scenes
-      </span>
+      <span className={GROUP_LABEL}>Scenes</span>
       {FOCUS_ORDER.map((item, i) => {
         const isFocused = i === state.focusIndex
         const label =
           item.kind === 'scene' ? SCENE_LABELS[item.id] : DEVICE_LABELS[item.id]
         const active = item.kind === 'device' && isDeviceActive(state, item.id)
         return (
-          <span key={`${item.kind}-${item.id}`} className="contents">
+          <Fragment key={`${item.kind}-${item.id}`}>
             {i === 4 && (
               <>
                 <span className="mx-1 h-4 w-px bg-border" />
-                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60">
-                  Devices
-                </span>
+                <span className={GROUP_LABEL}>Devices</span>
               </>
             )}
             <span
@@ -389,7 +415,7 @@ export function ControlRail({ state }: { state: SmartRoomState }) {
               )}
               {label}
             </span>
-          </span>
+          </Fragment>
         )
       })}
     </div>
@@ -455,7 +481,10 @@ const CONTACT: CSSProperties = {
   background: 'rgba(20,22,30,0.10)',
   filter: 'blur(2px)',
 }
-const EASE = 'transition-all duration-700 ease-out motion-reduce:transition-none'
+// v1 = soft SIMULTANEOUS transitions with varied durations so elements settle at
+// slightly different times (a gentle cascade). NOT delay-based onset-stagger.
+const EASE_SLOW = 'transition-all duration-700 ease-out motion-reduce:transition-none' // stage bg, blinds
+const EASE_FAST = 'transition-all duration-300 ease-out motion-reduce:transition-none' // lamp, speaker
 
 export function RoomStage({ state }: { state: SmartRoomState }) {
   const focused = focusedItem(state)
@@ -463,7 +492,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
 
   return (
     <div
-      className={`relative w-full max-w-xl overflow-hidden rounded-[1.25rem] border border-border shadow-inner ${EASE}`}
+      className={`relative w-full max-w-lg overflow-hidden rounded-[1.25rem] border border-border shadow-inner ${EASE_SLOW}`}
       style={{ aspectRatio: '16 / 10', background: STAGE_BG[state.activeScene] ?? '#ffffff' }}
     >
       {/* wall -> floor horizon */}
@@ -474,7 +503,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
       <div className="absolute" style={{ left: '9%', top: '15%', width: '24%', height: '34%' }}>
         {fdev === 'blinds' && <div className="absolute -inset-2" style={HALO} />}
         <div
-          className={`h-full w-full rounded-lg border ${EASE}`}
+          className={`h-full w-full rounded-lg border ${EASE_SLOW}`}
           style={{
             borderColor: state.blinds === 'closed' ? '#bcae9c' : '#c4c9d2',
             background:
@@ -498,12 +527,13 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
         {fdev === 'fan' && <div className="absolute -inset-2" style={HALO} />}
         <div
           className={`relative grid h-full w-full place-items-center rounded-full border ${
-            state.fanOn ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''
+            state.fanOn ? 'animate-spin motion-reduce:animate-none' : ''
           }`}
           style={{
             borderColor: state.fanOn ? 'var(--primary)' : '#c4c9d2',
             boxShadow: '0 3px 8px rgba(20,22,30,0.10)',
             background: '#ffffff',
+            animationDuration: state.fanOn ? '3s' : undefined,
           }}
         >
           <div
@@ -534,7 +564,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
           style={{ bottom: 0, width: 3, height: 46, background: '#d7dbe2', borderRadius: 2 }}
         />
         <div
-          className={`absolute left-1/2 -translate-x-1/2 ${EASE}`}
+          className={`absolute left-1/2 -translate-x-1/2 ${EASE_FAST}`}
           style={{
             top: 0,
             width: 30,
@@ -554,7 +584,7 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
       <div className="absolute" style={{ right: '13%', bottom: '15%', width: 22, height: 30 }}>
         {fdev === 'speaker' && <div className="absolute -inset-2" style={HALO} />}
         <div
-          className={`h-full w-full rounded-md border ${EASE}`}
+          className={`h-full w-full rounded-md border ${EASE_FAST}`}
           style={{
             borderColor: state.speakerOn ? 'var(--primary)' : '#c4c9d2',
             background: state.speakerOn
@@ -647,19 +677,14 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
           return true
         }
         if (signal === 'scroll-left') {
-          setState((s) => {
-            const n = focusPrev(s)
-            onNotify(focusLabel(n))
-            return n
-          })
+          // matches the OS pattern (home carousel + Movies both notify 'Scrolled Left/Right')
+          setState((s) => focusPrev(s))
+          onNotify('Scrolled Left')
           return true
         }
         if (signal === 'scroll-right') {
-          setState((s) => {
-            const n = focusNext(s)
-            onNotify(focusLabel(n))
-            return n
-          })
+          setState((s) => focusNext(s))
+          onNotify('Scrolled Right')
           return true
         }
         if (signal === 'jaw-clench') {
@@ -710,7 +735,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 p-6">
-          <div className="flex w-full max-w-xl items-center justify-between px-1">
+          <div className="flex w-full max-w-lg items-center justify-between px-1">
             <div>
               <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Active Scene
@@ -993,7 +1018,8 @@ Navigate to the Smart Room tile (`→` to it, `Enter`/`↵` to open), then verif
 - [ ] Header (red `House` icon + `Manifest` / `Smart Room`) and Exit pill match Snake's geometry.
 - [ ] `←`/`→` move the red focus along the rail and wrap (Speaker → Movie in one `→`).
 - [ ] The focused **device** gets the single red halo in the room (lamp / fan / blinds / speaker); focusing a **scene** shows no single-object halo.
-- [ ] `↵` on **Movie Night**: stage warms/dims, blinds close, lamp dims, speaker turns red, badge shows `● Active`, transition is slow/soft/staggered (not flashy).
+- [ ] `↵` on **Movie Night**: stage warms/dims, blinds close, lamp dims, speaker turns red, badge shows `● Active`; transition is soft and gently cascaded (stage/blinds settle slower than lamp/speaker via varied durations) — not flashy, not onset-staggered.
+- [ ] Focus moves emit `Scrolled Left`/`Scrolled Right` in the notification panel (matching the home carousel + Movies); activate/toggle/exit emit a descriptive note.
 - [ ] `↵` on **Focus**: bright stage, blinds open, lamp on, speaker off.
 - [ ] `↵` on **Sleep**: cool-dim stage, blinds closed, lights off, fan spins.
 - [ ] `↵` on **All Off**: everything gray/off.
@@ -1018,4 +1044,5 @@ git commit -m "polish: smart room visual QA pass"
 
 - **Spec coverage:** Vitest + tests (Tasks 1–2 ✓), pure state first (Task 2 ✓), app/stage/rail components (Tasks 3–5 ✓), AppOpenView (Task 7 ✓), ManifestOS routing/ref (Task 8 ✓), ControlsHint mode (Task 9 ✓), visual QA + manual checklist (Task 10 ✓). Scenes/devices, tri-state lights, dim→off toggle, manual-flip, wrap nav, no-live-preview, soft-depth/no-perspective all represented.
 - **Type consistency:** `SmartRoomState`, `SceneId`, `DeviceId`, `Lights`, `Blinds`, `FocusItem` defined in Task 2 `types.ts` and used unchanged in Tasks 3–8. Functions `applyScene`, `toggleDevice`, `focusPrev/Next`, `focusedItem`, `focusLabel`, `activate`, `isDeviceActive`, and constants `FOCUS_ORDER`, `SCENE_LABELS`, `DEVICE_LABELS` are defined in Task 2 and referenced consistently.
-- **Choreography:** uses CSS transitions (`transition-all duration-700` + `motion-reduce`) and `animate-[spin_…]` rather than framer-motion springs inside the stage — simpler, matches Snake's CSS-transition approach, still honors reduced-motion. (framer-motion remains available if a later polish pass wants spring staggering.)
+- **Choreography (honest):** v1 is **soft simultaneous** CSS transitions with *varied durations* (`EASE_SLOW` 700ms for stage bg + blinds, `EASE_FAST` 300ms for lamp + speaker) so elements settle at slightly different times — a gentle cascade, **not** delay-based onset-stagger (which would lag single-device toggles). Fan uses built-in `animate-spin` + inline `animationDuration: '3s'`. All honor `motion-reduce`. True onset-stagger / framer-motion springs are deferred polish.
+- **Notifications:** focus moves emit `Scrolled Left/Right` (matching `manifest-os.tsx` + `movies-app.tsx`); activate/toggle/exit emit descriptive notes. The `NotificationPanel` is a single replaceable note, so this is consistent, not spam.
