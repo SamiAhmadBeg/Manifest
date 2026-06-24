@@ -20,6 +20,9 @@ export const BCI = {
 
   /** Mac Delete key (labeled Delete, sends Backspace) */
   DELETE: 'Backspace',
+
+  /** Long blink — previous state / reverse cycle */
+  LONG_BLINK: 'b',
 } as const
 
 export type BciSignal =
@@ -28,6 +31,7 @@ export type BciSignal =
   | 'jaw-clench'
   | 'brow-raise'
   | 'exit'
+  | 'long-blink'
 
 export function keyToSignal(key: string): BciSignal | null {
   const k = key.length === 1 ? key.toLowerCase() : key
@@ -36,6 +40,7 @@ export function keyToSignal(key: string): BciSignal | null {
   if (k === BCI.JAW_CLENCH) return 'jaw-clench'
   if (k === BCI.BROW_RAISE) return 'brow-raise'
   if (k === BCI.EXIT || k === BCI.EXIT_ALT) return 'exit'
+  if (k === BCI.LONG_BLINK) return 'long-blink'
   return null
 }
 
