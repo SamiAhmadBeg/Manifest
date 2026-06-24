@@ -1,12 +1,21 @@
 'use client'
 
-import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react'
 import { House, X } from 'lucide-react'
-import { keyToSignal } from '@/lib/bci-controls'
+import { keyToSignal, isDeleteKey } from '@/lib/bci-controls'
 import {
   initialState,
   applyScene,
   cycleDevice,
+  focusedItem,
+  FOCUS_ORDER,
 } from '@/lib/smart-room/state'
 import type { SmartRoomState, SceneId, DeviceId } from '@/lib/smart-room/types'
 import { RoomStage } from './room-stage'
@@ -35,11 +44,27 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
     const [state, setState] = useState<SmartRoomState>(() =>
       initialState(startScene),
     )
+    const [focusIndex, setFocusIndex] = useState(0)
+    const [firing, setFiring] = useState(false)
+    const fireTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+      return () => {
+        if (fireTimer.current) clearTimeout(fireTimer.current)
+      }
+    }, [])
+
+    const fire = useCallback(() => {
+      setFiring(true)
+      if (fireTimer.current) clearTimeout(fireTimer.current)
+      fireTimer.current = setTimeout(() => setFiring(false), 300)
+    }, [])
 
     const onApplyScene = useCallback(
       (id: SceneId) => {
         const next = applyScene(state, id)
         setState(next)
+        setFocusIndex(FOCUS_ORDER.findIndex((f) => f.kind === 'scene' && f.id === id))
         onNotify(next.lastAction)
       },
       [state, onNotify],
@@ -49,25 +74,64 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
       (id: DeviceId) => {
         const next = cycleDevice(state, id)
         setState(next)
+        setFocusIndex(FOCUS_ORDER.findIndex((f) => f.kind === 'device' && f.id === id))
         onNotify(next.lastAction)
       },
       [state, onNotify],
     )
 
+    const activate = useCallback(
+      (dir: 1 | -1) => {
+        const item = focusedItem(focusIndex)
+        if (item.kind === 'scene') {
+          if (dir === -1) return // reverse on a scene is a no-op
+          const next = applyScene(state, item.id)
+          setState(next)
+          onNotify(next.lastAction)
+          fire()
+        } else {
+          const next = cycleDevice(state, item.id, dir)
+          setState(next)
+          onNotify(next.lastAction)
+          fire()
+        }
+      },
+      [focusIndex, state, onNotify, fire],
+    )
+
     const handleKey = useCallback(
       (key: string): boolean => {
         const signal = keyToSignal(key)
-        if (signal === 'exit') {
+        if (signal === 'exit' || signal === 'brow-raise') {
           onClose()
           onNotify('Exited Smart Room')
           return true
         }
+        if (signal === 'scroll-left') {
+          setFocusIndex((i) => (i - 1 + FOCUS_ORDER.length) % FOCUS_ORDER.length)
+          return true
+        }
+        if (signal === 'scroll-right') {
+          setFocusIndex((i) => (i + 1) % FOCUS_ORDER.length)
+          return true
+        }
+        if (signal === 'jaw-clench') {
+          activate(1)
+          return true
+        }
+        if (signal === 'long-blink' || isDeleteKey(key)) {
+          activate(-1)
+          return true
+        }
         return false
       },
-      [onClose, onNotify],
+      [onClose, onNotify, activate],
     )
 
     useImperativeHandle(ref, () => ({ handleKey }), [handleKey])
+
+    const focused = focusedItem(focusIndex)
+    const focusedDevice = focused.kind === 'device' ? focused.id : undefined
 
     return (
       <div
@@ -170,7 +234,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
             overflow: 'hidden',
           }}
         >
-          <RoomStage state={state} />
+          <RoomStage state={state} focusedDevice={focusedDevice} />
 
           {/* Last-action toast */}
           {showTelemetry && (
@@ -216,6 +280,8 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
           <ControlRail
             state={state}
             showStatusText={showStatusText}
+            focusIndex={focusIndex}
+            firing={firing}
             onApplyScene={onApplyScene}
             onToggleDevice={onToggleDevice}
           />

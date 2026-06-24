@@ -55,7 +55,12 @@ function controlsForMode(mode: ControlsMode): Control[] {
         { keys: 'Esc', label: 'Exit' },
       ]
     case 'smart-room':
-      return [{ keys: 'Esc', label: 'Exit' }]
+      return [
+        { keys: '←', label: 'Prev' },
+        { keys: '→', label: 'Next' },
+        { keys: '↵', label: 'Select' },
+        { keys: '↑', label: 'Exit' },
+      ]
     case 'app':
     default:
       return [
