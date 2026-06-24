@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { House, X } from 'lucide-react'
+import { House, X, Waves } from 'lucide-react'
 import { keyToSignal, isDeleteKey } from '@/lib/bci-controls'
 import {
   initialState,
@@ -236,43 +236,25 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
         >
           <RoomStage state={state} focusedDevice={focusedDevice} />
 
-          {/* Last-action toast */}
+          {/* Last-action toast — matches the OS "Recent Action" pill */}
           {showTelemetry && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 24,
-                top: 22,
-                zIndex: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-                gap: 3,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
-                  fontSize: 9,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.62)',
-                  textShadow: '0 1px 6px rgba(0,0,0,0.4)',
-                }}
-              >
-                LAST ACTION
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: '#fff',
-                  textShadow: '0 1px 8px rgba(0,0,0,0.5)',
-                }}
-              >
-                {state.lastAction}
-              </span>
+            <div className="pointer-events-none absolute right-6 top-5 z-20">
+              <p className="mb-2 pr-1 text-right text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Last Action
+              </p>
+              <div className="flex h-[58px] w-60 items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-4 shadow-sm">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/25">
+                  <Waves className="size-4" />
+                </div>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                    {state.lastAction}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Neural input · just now
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

@@ -240,10 +240,11 @@ function buildScene(state: SmartRoomState, v: ReturnType<typeof roomVisuals>): F
   return faces
 }
 
-/* Isometric projection — mirrors CSS rotateX(58) rotateZ(45), scale 0.96.
-   Used to anchor the flat ZZZ overlay to the sleeping head in 3D. */
+/* Isometric projection — mirrors CSS rotateX(58) rotateZ(45), scale 0.86.
+   Must keep S in sync with the iso-stage wrapper scale so the flat overlays
+   (ZZZ, focus halo) anchor to their 3D objects. */
 function proj(x: number, y: number, z: number): { x: number; y: number } {
-  const S = 0.96
+  const S = 0.86
   const c45 = 0.70711
   const s45 = 0.70711
   const c58 = 0.52992
@@ -304,7 +305,7 @@ export function RoomStage({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        background: 'radial-gradient(120% 100% at 50% 28%, #dedad5, #c5c0ba)',
+        background: '#ffffff',
       }}
     >
       {/* ISO STAGE */}
@@ -321,7 +322,7 @@ export function RoomStage({
         <div
           style={{
             transformStyle: 'preserve-3d',
-            transform: 'scale(0.96) rotateX(58deg) rotateZ(45deg)',
+            transform: 'scale(0.86) rotateX(58deg) rotateZ(45deg)',
           }}
         >
           <div
@@ -500,12 +501,11 @@ export function RoomStage({
                   left: `calc(50% + ${Math.round(p.x)}px)`,
                   top: `calc(50% + ${Math.round(p.y)}px)`,
                   transform: 'translate(-50%,-50%)',
-                  width: 150,
-                  height: 150,
+                  width: 230,
+                  height: 230,
                   borderRadius: '50%',
                   background:
-                    'radial-gradient(circle, rgba(255,255,255,0.5), rgba(255,255,255,0.14) 46%, transparent 70%)',
-                  mixBlendMode: 'screen',
+                    'radial-gradient(circle, rgba(255,96,74,0.5) 0%, rgba(255,116,96,0.22) 42%, rgba(255,116,96,0.08) 60%, transparent 74%)',
                   animation: 'sr-breathe 3s ease-in-out infinite',
                 }}
               />
@@ -525,19 +525,6 @@ export function RoomStage({
             'radial-gradient(100% 90% at 50% 40%,rgba(252,250,247,0.10),transparent 72%)',
         }}
       />
-      {/* faint uniform vignette */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 14,
-          pointerEvents: 'none',
-          background:
-            'radial-gradient(120% 100% at 50% 42%,transparent 42%,rgba(18,15,12,1) 132%)',
-          opacity: 0.06,
-        }}
-      />
-
       {/* scene caption */}
       <div style={{ position: 'absolute', left: 28, top: 24, zIndex: 20 }}>
         <div
@@ -546,8 +533,7 @@ export function RoomStage({
             fontSize: 10,
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.72)',
-            textShadow: '0 1px 6px rgba(0,0,0,0.4)',
+            color: 'rgba(196,41,29,0.7)',
           }}
         >
           Active scene
@@ -558,8 +544,7 @@ export function RoomStage({
             fontSize: 28,
             fontWeight: 600,
             letterSpacing: '-0.01em',
-            color: '#fff',
-            textShadow: '0 2px 14px rgba(0,0,0,0.5)',
+            color: '#e2402f',
           }}
         >
           {sceneLabel}

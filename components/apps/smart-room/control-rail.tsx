@@ -34,7 +34,7 @@ const TOKENS = {
 
 const HOVER_BG = 'rgba(255,255,255,0.5)'
 
-const FOCUS_RING = '0 0 0 2px rgba(38,40,46,0.55), 0 0 0 6px rgba(38,40,46,0.12)'
+const FOCUS_RING = '0 0 0 2px #e2402f, 0 0 0 6px rgba(226,64,47,0.18)'
 const FIRING_RING = '0 0 0 2px #37b27d, 0 0 0 6px rgba(55,178,125,0.18)'
 
 const railStyle: CSSProperties = {
