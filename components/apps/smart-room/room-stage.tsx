@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import type { SmartRoomState } from '@/lib/smart-room/types'
+import type { SmartRoomState, DeviceId } from '@/lib/smart-room/types'
 import { roomVisuals } from '@/lib/smart-room/visuals'
 import { SCENE_LABELS } from '@/lib/smart-room/state'
 
@@ -256,7 +256,21 @@ function proj(x: number, y: number, z: number): { x: number; y: number } {
   return { x: ax * S, y: (ay * c58 - cz * s58) * S }
 }
 
-export function RoomStage({ state }: { state: SmartRoomState }) {
+// Object centers (room units) read from buildScene, for the focus halo.
+const HALO_ANCHORS: Record<DeviceId, { x: number; y: number; z: number }> = {
+  lights:  { x: 346, y: 26,  z: 170 }, // floor lamp shade
+  blinds:  { x: 7,   y: 144, z: 163 }, // window / blinds
+  fan:     { x: 135, y: 121, z: 214 }, // ceiling fan
+  monitor: { x: 286, y: 53,  z: 92 },  // monitor screen + PC tower
+}
+
+export function RoomStage({
+  state,
+  focusedDevice,
+}: {
+  state: SmartRoomState
+  focusedDevice?: DeviceId
+}) {
   const v = roomVisuals(state)
   const faces = buildScene(state, v)
 
@@ -471,6 +485,33 @@ export function RoomStage({ state }: { state: SmartRoomState }) {
             </div>
           </div>
         )}
+
+        {/* focus halo over the focused device's object */}
+        {focusedDevice && (() => {
+          const a = HALO_ANCHORS[focusedDevice]
+          const p = proj(a.x, a.y, a.z)
+          return (
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              <div
+                data-sr-anim=""
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: `calc(50% + ${Math.round(p.x)}px)`,
+                  top: `calc(50% + ${Math.round(p.y)}px)`,
+                  transform: 'translate(-50%,-50%)',
+                  width: 150,
+                  height: 150,
+                  borderRadius: '50%',
+                  background:
+                    'radial-gradient(circle, rgba(255,255,255,0.5), rgba(255,255,255,0.14) 46%, transparent 70%)',
+                  mixBlendMode: 'screen',
+                  animation: 'sr-breathe 3s ease-in-out infinite',
+                }}
+              />
+            </div>
+          )
+        })()}
       </div>
 
       {/* uniform neutral wash — SAME for every scene, never darkens per scene */}
