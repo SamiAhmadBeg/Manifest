@@ -104,6 +104,11 @@
   50%      { transform: translateX(-50%) scale(1.14); opacity: .85; }
 }
 @keyframes sr-dwellbar { from { width: 4%; } to { width: 100%; } }
+@keyframes sr-zzz {
+  0%   { opacity: 0; transform: translateY(0)     scale(.8);  }
+  30%  { opacity: 1;                                          }
+  100% { opacity: 0; transform: translateY(-26px) scale(1.1); }
+}
 
 /* ── Smart Room: reduced-motion guard ──
    Scoped to [data-sr-anim] so tw-animate-css and other app animations
