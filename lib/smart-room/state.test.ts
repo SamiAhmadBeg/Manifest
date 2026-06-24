@@ -3,266 +3,225 @@ import {
   initialState,
   applyScene,
   cycleDevice,
-  cycle,
   deviceValue,
-  focusPrev,
-  focusNext,
-  focusedItem,
   isDeviceActive,
   nextLights,
-  prevLights,
   nextFan,
-  prevFan,
-  FOCUS_ORDER,
+  SCENE_LABELS,
+  DEVICE_LABELS,
 } from './state'
 
-// ── applyScene ────────────────────────────────────────────────────────────────
-describe('applyScene', () => {
-  it('movie: lights dim, blinds closed, fan off, speaker on', () => {
-    expect(applyScene(initialState(), 'movie')).toMatchObject({
-      activeScene: 'movie',
-      lights: 'dim',
-      blinds: 'closed',
-      fan: 'off',
-      speaker: 'on',
-    })
+// ── labels ────────────────────────────────────────────────────────────────────
+describe('labels', () => {
+  it('SCENE_LABELS', () => {
+    expect(SCENE_LABELS).toEqual({ focus: 'Focus', sleep: 'Sleep', alloff: 'All Off' })
   })
 
-  it('focus: lights on, blinds open, fan off, speaker off', () => {
-    expect(applyScene(initialState(), 'focus')).toMatchObject({
-      activeScene: 'focus',
-      lights: 'on',
-      blinds: 'open',
-      fan: 'off',
-      speaker: 'off',
+  it('DEVICE_LABELS', () => {
+    expect(DEVICE_LABELS).toEqual({
+      lights: 'Lights',
+      fan: 'Fan',
+      blinds: 'Blinds',
+      monitor: 'Monitor',
     })
-  })
-
-  it('sleep: lights off, blinds closed, fan low, speaker off', () => {
-    expect(applyScene(initialState(), 'sleep')).toMatchObject({
-      activeScene: 'sleep',
-      lights: 'off',
-      blinds: 'closed',
-      fan: 'low',
-      speaker: 'off',
-    })
-  })
-
-  it('alloff: lights off, blinds open, fan off, speaker off', () => {
-    expect(applyScene(initialState(), 'alloff')).toMatchObject({
-      activeScene: 'alloff',
-      lights: 'off',
-      blinds: 'open',
-      fan: 'off',
-      speaker: 'off',
-    })
-  })
-
-  it('preserves focusIndex', () => {
-    const base = { ...initialState(), focusIndex: 6 }
-    expect(applyScene(base, 'sleep').focusIndex).toBe(6)
   })
 })
 
-// ── lights cycle helpers ──────────────────────────────────────────────────────
-describe('nextLights / prevLights', () => {
-  it('next: off→dim→on→off', () => {
+// ── initialState ──────────────────────────────────────────────────────────────
+describe('initialState', () => {
+  it('defaults to focus', () => {
+    expect(initialState()).toEqual({
+      monitor: 'on',
+      lights: 'on',
+      fan: 'low',
+      blinds: 'open',
+      activeScene: 'focus',
+      pose: 'desk',
+      headphones: true,
+      lastAction: 'Focus scene',
+    })
+  })
+
+  it('sleep applies sleep preset/pose/headphones', () => {
+    expect(initialState('sleep')).toEqual({
+      monitor: 'off',
+      lights: 'off',
+      fan: 'low',
+      blinds: 'closed',
+      activeScene: 'sleep',
+      pose: 'bed',
+      headphones: false,
+      lastAction: 'Sleep scene',
+    })
+  })
+
+  it('alloff applies alloff preset; blinds takes base default open (preset omits blinds)', () => {
+    expect(initialState('alloff')).toEqual({
+      monitor: 'off',
+      lights: 'off',
+      fan: 'off',
+      blinds: 'open',
+      activeScene: 'alloff',
+      pose: 'desk',
+      headphones: false,
+      lastAction: 'All Off scene',
+    })
+  })
+})
+
+// ── applyScene ────────────────────────────────────────────────────────────────
+describe('applyScene', () => {
+  it('focus', () => {
+    expect(applyScene(initialState('sleep'), 'focus')).toMatchObject({
+      monitor: 'on',
+      lights: 'on',
+      fan: 'low',
+      blinds: 'open',
+      activeScene: 'focus',
+      pose: 'desk',
+      headphones: true,
+      lastAction: 'Focus scene',
+    })
+  })
+
+  it('sleep', () => {
+    expect(applyScene(initialState('focus'), 'sleep')).toMatchObject({
+      monitor: 'off',
+      lights: 'off',
+      fan: 'low',
+      blinds: 'closed',
+      activeScene: 'sleep',
+      pose: 'bed',
+      headphones: false,
+      lastAction: 'Sleep scene',
+    })
+  })
+
+  it('alloff sets monitor/lights/fan, pose desk, headphones false', () => {
+    expect(applyScene(initialState('focus'), 'alloff')).toMatchObject({
+      monitor: 'off',
+      lights: 'off',
+      fan: 'off',
+      activeScene: 'alloff',
+      pose: 'desk',
+      headphones: false,
+      lastAction: 'All Off scene',
+    })
+  })
+
+  it('alloff leaves blinds closed untouched', () => {
+    const s = { ...initialState('focus'), blinds: 'closed' as const }
+    expect(applyScene(s, 'alloff').blinds).toBe('closed')
+  })
+
+  it('alloff leaves blinds open untouched', () => {
+    const s = { ...initialState('focus'), blinds: 'open' as const }
+    expect(applyScene(s, 'alloff').blinds).toBe('open')
+  })
+})
+
+// ── cycle helpers ─────────────────────────────────────────────────────────────
+describe('nextLights', () => {
+  it('off→dim→on→off', () => {
     expect(nextLights('off')).toBe('dim')
     expect(nextLights('dim')).toBe('on')
     expect(nextLights('on')).toBe('off')
   })
-
-  it('prev: off→on→dim→off (mirror of next)', () => {
-    expect(prevLights('off')).toBe('on')
-    expect(prevLights('on')).toBe('dim')
-    expect(prevLights('dim')).toBe('off')
-  })
 })
 
-// ── fan cycle helpers ─────────────────────────────────────────────────────────
-describe('nextFan / prevFan', () => {
-  it('next: off→low→high→off', () => {
+describe('nextFan', () => {
+  it('off→low→high→off', () => {
     expect(nextFan('off')).toBe('low')
     expect(nextFan('low')).toBe('high')
     expect(nextFan('high')).toBe('off')
-  })
-
-  it('prev: off→high→low→off (mirror of next)', () => {
-    expect(prevFan('off')).toBe('high')
-    expect(prevFan('high')).toBe('low')
-    expect(prevFan('low')).toBe('off')
   })
 })
 
 // ── cycleDevice ───────────────────────────────────────────────────────────────
 describe('cycleDevice', () => {
+  it('lights cycles off→dim→on→off', () => {
+    const off = initialState('sleep') // lights off
+    const dim = cycleDevice(off, 'lights')
+    expect(dim.lights).toBe('dim')
+    const on = cycleDevice(dim, 'lights')
+    expect(on.lights).toBe('on')
+    const back = cycleDevice(on, 'lights')
+    expect(back.lights).toBe('off')
+  })
+
+  it('fan cycles off→low→high→off', () => {
+    const off = initialState('alloff') // fan off
+    const low = cycleDevice(off, 'fan')
+    expect(low.fan).toBe('low')
+    const high = cycleDevice(low, 'fan')
+    expect(high.fan).toBe('high')
+    const back = cycleDevice(high, 'fan')
+    expect(back.fan).toBe('off')
+  })
+
+  it('blinds toggles open↔closed', () => {
+    const open = initialState('focus') // blinds open
+    const closed = cycleDevice(open, 'blinds')
+    expect(closed.blinds).toBe('closed')
+    expect(cycleDevice(closed, 'blinds').blinds).toBe('open')
+  })
+
+  it('monitor toggles on↔off', () => {
+    const on = initialState('focus') // monitor on
+    const off = cycleDevice(on, 'monitor')
+    expect(off.monitor).toBe('off')
+    expect(cycleDevice(off, 'monitor').monitor).toBe('on')
+  })
+
   it('sets activeScene to manual', () => {
-    const s = cycleDevice(applyScene(initialState(), 'focus'), 'fan', 1)
-    expect(s.activeScene).toBe('manual')
+    expect(cycleDevice(initialState('focus'), 'fan').activeScene).toBe('manual')
   })
 
-  it('preserves focusIndex', () => {
-    const base = { ...initialState(), focusIndex: 5 }
-    expect(cycleDevice(base, 'fan', 1).focusIndex).toBe(5)
+  it('lastAction is device label + new value uppercased', () => {
+    expect(cycleDevice(initialState('sleep'), 'lights').lastAction).toBe('Lights DIM')
+    expect(cycleDevice(initialState('focus'), 'fan').lastAction).toBe('Fan HIGH')
+    expect(cycleDevice(initialState('focus'), 'blinds').lastAction).toBe('Blinds CLOSED')
+    expect(cycleDevice(initialState('focus'), 'monitor').lastAction).toBe('Monitor OFF')
   })
 
-  it('lights dir=1: off→dim→on→off', () => {
-    const off = applyScene(initialState(), 'sleep') // lights off
-    const dim = cycleDevice(off, 'lights', 1)
-    expect(dim.lights).toBe('dim')
-    const on = cycleDevice(dim, 'lights', 1)
-    expect(on.lights).toBe('on')
-    const back = cycleDevice(on, 'lights', 1)
-    expect(back.lights).toBe('off')
-  })
-
-  it('lights dir=-1: off→on→dim→off', () => {
-    const off = applyScene(initialState(), 'sleep')
-    const on = cycleDevice(off, 'lights', -1)
-    expect(on.lights).toBe('on')
-    const dim = cycleDevice(on, 'lights', -1)
-    expect(dim.lights).toBe('dim')
-    const back = cycleDevice(dim, 'lights', -1)
-    expect(back.lights).toBe('off')
-  })
-
-  it('fan dir=1: off→low→high→off', () => {
-    const s0 = applyScene(initialState(), 'alloff') // fan off
-    const s1 = cycleDevice(s0, 'fan', 1)
-    expect(s1.fan).toBe('low')
-    const s2 = cycleDevice(s1, 'fan', 1)
-    expect(s2.fan).toBe('high')
-    const s3 = cycleDevice(s2, 'fan', 1)
-    expect(s3.fan).toBe('off')
-  })
-
-  it('fan dir=-1: off→high→low→off', () => {
-    const s0 = applyScene(initialState(), 'alloff')
-    const s1 = cycleDevice(s0, 'fan', -1)
-    expect(s1.fan).toBe('high')
-    const s2 = cycleDevice(s1, 'fan', -1)
-    expect(s2.fan).toBe('low')
-    const s3 = cycleDevice(s2, 'fan', -1)
-    expect(s3.fan).toBe('off')
-  })
-
-  it('blinds toggles open→closed (dir ignored)', () => {
-    const s = applyScene(initialState(), 'focus') // blinds open
-    expect(cycleDevice(s, 'blinds', 1).blinds).toBe('closed')
-    expect(cycleDevice(s, 'blinds', -1).blinds).toBe('closed')
-  })
-
-  it('blinds toggles closed→open', () => {
-    const s = applyScene(initialState(), 'movie') // blinds closed
-    expect(cycleDevice(s, 'blinds', 1).blinds).toBe('open')
-  })
-
-  it('speaker toggles off→on (dir ignored)', () => {
-    const s = applyScene(initialState(), 'focus') // speaker off
-    expect(cycleDevice(s, 'speaker', 1).speaker).toBe('on')
-    expect(cycleDevice(s, 'speaker', -1).speaker).toBe('on')
-  })
-
-  it('speaker toggles on→off', () => {
-    const s = applyScene(initialState(), 'movie') // speaker on
-    expect(cycleDevice(s, 'speaker', 1).speaker).toBe('off')
-  })
-})
-
-// ── cycle (dispatch) ──────────────────────────────────────────────────────────
-describe('cycle', () => {
-  it('applies scene when a scene is focused (focusIndex 0 = movie)', () => {
-    const base = { ...applyScene(initialState(), 'sleep'), focusIndex: 0 }
-    const next = cycle(base, 1)
-    expect(next.activeScene).toBe('movie')
-    expect(next.lights).toBe('dim')
-  })
-
-  it('applies scene regardless of dir', () => {
-    const base = { ...initialState(), focusIndex: 2 } // sleep
-    expect(cycle(base, 1).activeScene).toBe('sleep')
-    expect(cycle(base, -1).activeScene).toBe('sleep')
-  })
-
-  it('cycles a device when a device is focused', () => {
-    // focusIndex 4 = lights, start with 'off' (sleep scene)
-    const base = { ...applyScene(initialState(), 'sleep'), focusIndex: 4 }
-    const next = cycle(base, 1)
-    expect(next.lights).toBe('dim')
-    expect(next.activeScene).toBe('manual')
-  })
-})
-
-// ── focus navigation ──────────────────────────────────────────────────────────
-describe('focus navigation', () => {
-  it('prev wraps from index 0 to last', () => {
-    expect(focusPrev({ ...initialState(), focusIndex: 0 }).focusIndex).toBe(FOCUS_ORDER.length - 1)
-  })
-
-  it('next wraps from last to index 0', () => {
-    expect(focusNext({ ...initialState(), focusIndex: FOCUS_ORDER.length - 1 }).focusIndex).toBe(0)
-  })
-
-  it('focusedItem: index 0 → movie scene', () => {
-    expect(focusedItem({ ...initialState(), focusIndex: 0 })).toEqual({ kind: 'scene', id: 'movie' })
-  })
-
-  it('focusedItem: index 4 → lights device', () => {
-    expect(focusedItem({ ...initialState(), focusIndex: 4 })).toEqual({ kind: 'device', id: 'lights' })
-  })
-})
-
-// ── isDeviceActive ────────────────────────────────────────────────────────────
-describe('isDeviceActive', () => {
-  it('lights: dim → true', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'movie'), 'lights')).toBe(true)
-  })
-
-  it('lights: on → true', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'focus'), 'lights')).toBe(true)
-  })
-
-  it('lights: off → false', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'sleep'), 'lights')).toBe(false)
-  })
-
-  it('fan: low → true', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'sleep'), 'fan')).toBe(true)
-  })
-
-  it('fan: high → true', () => {
-    const s = cycleDevice(applyScene(initialState(), 'sleep'), 'fan', 1) // low→high
-    expect(isDeviceActive(s, 'fan')).toBe(true)
-  })
-
-  it('fan: off → false', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'alloff'), 'fan')).toBe(false)
-  })
-
-  it('blinds: closed → true (inverted semantics)', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'movie'), 'blinds')).toBe(true)
-  })
-
-  it('blinds: open → false', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'focus'), 'blinds')).toBe(false)
-  })
-
-  it('speaker: on → true', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'movie'), 'speaker')).toBe(true)
-  })
-
-  it('speaker: off → false', () => {
-    expect(isDeviceActive(applyScene(initialState(), 'focus'), 'speaker')).toBe(false)
+  it('does not change pose or headphones', () => {
+    const base = initialState('focus')
+    const next = cycleDevice(base, 'fan')
+    expect(next.pose).toBe(base.pose)
+    expect(next.headphones).toBe(base.headphones)
   })
 })
 
 // ── deviceValue ───────────────────────────────────────────────────────────────
 describe('deviceValue', () => {
   it('returns current value string for each device', () => {
-    const s = applyScene(initialState(), 'sleep')
+    const s = initialState('sleep')
     expect(deviceValue(s, 'lights')).toBe('off')
     expect(deviceValue(s, 'fan')).toBe('low')
     expect(deviceValue(s, 'blinds')).toBe('closed')
-    expect(deviceValue(s, 'speaker')).toBe('off')
+    expect(deviceValue(s, 'monitor')).toBe('off')
+  })
+})
+
+// ── isDeviceActive ────────────────────────────────────────────────────────────
+describe('isDeviceActive', () => {
+  it('lights !== off', () => {
+    expect(isDeviceActive(initialState('focus'), 'lights')).toBe(true) // on
+    expect(isDeviceActive(initialState('sleep'), 'lights')).toBe(false) // off
+  })
+
+  it('fan !== off', () => {
+    expect(isDeviceActive(initialState('focus'), 'fan')).toBe(true) // low
+    expect(isDeviceActive(initialState('alloff'), 'fan')).toBe(false) // off
+  })
+
+  it('blinds === closed', () => {
+    expect(isDeviceActive(initialState('sleep'), 'blinds')).toBe(true) // closed
+    expect(isDeviceActive(initialState('focus'), 'blinds')).toBe(false) // open
+  })
+
+  it('monitor === on', () => {
+    expect(isDeviceActive(initialState('focus'), 'monitor')).toBe(true) // on
+    expect(isDeviceActive(initialState('sleep'), 'monitor')).toBe(false) // off
   })
 })

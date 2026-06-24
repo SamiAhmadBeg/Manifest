@@ -3,32 +3,11 @@ import type {
   DeviceId,
   Lights,
   Fan,
+  Pose,
   SmartRoomState,
-  FocusItem,
 } from './types'
 
-export const FOCUS_ORDER: FocusItem[] = [
-  { kind: 'scene', id: 'movie' },
-  { kind: 'scene', id: 'focus' },
-  { kind: 'scene', id: 'sleep' },
-  { kind: 'scene', id: 'alloff' },
-  { kind: 'device', id: 'lights' },
-  { kind: 'device', id: 'fan' },
-  { kind: 'device', id: 'blinds' },
-  { kind: 'device', id: 'speaker' },
-]
-
-type SceneDef = Pick<SmartRoomState, 'lights' | 'fan' | 'blinds' | 'speaker'>
-
-export const SCENES: Record<SceneId, SceneDef> = {
-  movie:  { lights: 'dim', blinds: 'closed', fan: 'off', speaker: 'on'  },
-  focus:  { lights: 'on',  blinds: 'open',   fan: 'off', speaker: 'off' },
-  sleep:  { lights: 'off', blinds: 'closed', fan: 'low', speaker: 'off' },
-  alloff: { lights: 'off', blinds: 'open',   fan: 'off', speaker: 'off' },
-}
-
 export const SCENE_LABELS: Record<SceneId, string> = {
-  movie:  'Movie Night',
   focus:  'Focus',
   sleep:  'Sleep',
   alloff: 'All Off',
@@ -38,118 +17,101 @@ export const DEVICE_LABELS: Record<DeviceId, string> = {
   lights:  'Lights',
   fan:     'Fan',
   blinds:  'Blinds',
-  speaker: 'Speaker',
+  monitor: 'Monitor',
 }
 
-export function initialState(): SmartRoomState {
-  return { activeScene: 'movie', ...SCENES.movie, focusIndex: 0 }
+type ScenePreset = Partial<Pick<SmartRoomState, 'monitor' | 'lights' | 'fan' | 'blinds'>>
+
+// alloff intentionally OMITS blinds so applying it leaves blinds untouched.
+const SCENES: Record<SceneId, ScenePreset> = {
+  focus:  { monitor: 'on',  lights: 'on',  blinds: 'open',   fan: 'low' },
+  sleep:  { monitor: 'off', lights: 'off', blinds: 'closed', fan: 'low' },
+  alloff: { monitor: 'off', lights: 'off',                   fan: 'off' },
+}
+
+const POSE: Record<SceneId, Pose> = {
+  focus:  'desk',
+  sleep:  'bed',
+  alloff: 'desk',
+}
+
+const HEADPHONES: Record<SceneId, boolean> = {
+  focus:  true,
+  sleep:  false,
+  alloff: false,
+}
+
+export function initialState(startScene: SceneId = 'focus'): SmartRoomState {
+  const base: SmartRoomState = {
+    monitor: 'off',
+    lights: 'off',
+    fan: 'off',
+    blinds: 'open',
+    activeScene: 'manual',
+    pose: 'desk',
+    headphones: false,
+    lastAction: '',
+  }
+  return applyScene(base, startScene)
 }
 
 export function applyScene(state: SmartRoomState, id: SceneId): SmartRoomState {
-  const s = SCENES[id]
   return {
     ...state,
+    ...SCENES[id],
     activeScene: id,
-    lights:  s.lights,
-    blinds:  s.blinds,
-    fan:     s.fan,
-    speaker: s.speaker,
+    pose: POSE[id],
+    headphones: HEADPHONES[id],
+    lastAction: `${SCENE_LABELS[id]} scene`,
   }
 }
 
-// ── Lights cycle ──────────────────────────────────────────────────────────────
 export function nextLights(v: Lights): Lights {
   if (v === 'off') return 'dim'
   if (v === 'dim') return 'on'
   return 'off'
 }
 
-export function prevLights(v: Lights): Lights {
-  if (v === 'off') return 'on'
-  if (v === 'on')  return 'dim'
-  return 'off'
-}
-
-// ── Fan cycle ─────────────────────────────────────────────────────────────────
 export function nextFan(v: Fan): Fan {
-  if (v === 'off')  return 'low'
-  if (v === 'low')  return 'high'
+  if (v === 'off') return 'low'
+  if (v === 'low') return 'high'
   return 'off'
 }
 
-export function prevFan(v: Fan): Fan {
-  if (v === 'off')  return 'high'
-  if (v === 'high') return 'low'
-  return 'off'
-}
-
-// ── cycleDevice ───────────────────────────────────────────────────────────────
-export function cycleDevice(
-  state: SmartRoomState,
-  id: DeviceId,
-  dir: 1 | -1,
-): SmartRoomState {
+export function cycleDevice(state: SmartRoomState, id: DeviceId): SmartRoomState {
   const next: SmartRoomState = { ...state, activeScene: 'manual' }
   switch (id) {
     case 'lights':
-      next.lights = dir > 0 ? nextLights(state.lights) : prevLights(state.lights)
+      next.lights = nextLights(state.lights)
       break
     case 'fan':
-      next.fan = dir > 0 ? nextFan(state.fan) : prevFan(state.fan)
+      next.fan = nextFan(state.fan)
       break
     case 'blinds':
       next.blinds = state.blinds === 'open' ? 'closed' : 'open'
       break
-    case 'speaker':
-      next.speaker = state.speaker === 'off' ? 'on' : 'off'
+    case 'monitor':
+      next.monitor = state.monitor === 'on' ? 'off' : 'on'
       break
   }
+  next.lastAction = `${DEVICE_LABELS[id]} ${deviceValue(next, id).toUpperCase()}`
   return next
 }
 
-// ── cycle (dispatch on focused item) ─────────────────────────────────────────
-export function cycle(state: SmartRoomState, dir: 1 | -1): SmartRoomState {
-  const item = focusedItem(state)
-  if (item.kind === 'scene') return applyScene(state, item.id)
-  return cycleDevice(state, item.id, dir)
-}
-
-// ── deviceValue ───────────────────────────────────────────────────────────────
 export function deviceValue(state: SmartRoomState, id: DeviceId): string {
   switch (id) {
     case 'lights':  return state.lights
     case 'fan':     return state.fan
     case 'blinds':  return state.blinds
-    case 'speaker': return state.speaker
+    case 'monitor': return state.monitor
   }
 }
 
-// ── focus helpers ─────────────────────────────────────────────────────────────
-export function focusedItem(state: SmartRoomState): FocusItem {
-  return FOCUS_ORDER[state.focusIndex]
-}
-
-export function focusLabel(state: SmartRoomState): string {
-  const item = focusedItem(state)
-  return item.kind === 'scene' ? SCENE_LABELS[item.id] : DEVICE_LABELS[item.id]
-}
-
-export function focusPrev(state: SmartRoomState): SmartRoomState {
-  const n = FOCUS_ORDER.length
-  return { ...state, focusIndex: (state.focusIndex - 1 + n) % n }
-}
-
-export function focusNext(state: SmartRoomState): SmartRoomState {
-  const n = FOCUS_ORDER.length
-  return { ...state, focusIndex: (state.focusIndex + 1) % n }
-}
-
-// ── isDeviceActive ────────────────────────────────────────────────────────────
 export function isDeviceActive(state: SmartRoomState, id: DeviceId): boolean {
   switch (id) {
     case 'lights':  return state.lights !== 'off'
     case 'fan':     return state.fan    !== 'off'
     case 'blinds':  return state.blinds === 'closed'
-    case 'speaker': return state.speaker === 'on'
+    case 'monitor': return state.monitor === 'on'
   }
 }
