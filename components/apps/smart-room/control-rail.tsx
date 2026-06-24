@@ -45,7 +45,7 @@ const railStyle: CSSProperties = {
   zIndex: 30,
   display: 'flex',
   alignItems: 'center',
-  gap: '4px',
+  gap: '8px',
   padding: '10px 14px',
   borderRadius: '22px',
   background: 'rgba(252,251,250,0.66)',

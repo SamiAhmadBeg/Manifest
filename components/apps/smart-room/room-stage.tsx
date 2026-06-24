@@ -497,11 +497,11 @@ export function RoomStage({
                   left: `calc(50% + ${Math.round(p.x)}px)`,
                   top: `calc(50% + ${Math.round(p.y)}px)`,
                   transform: 'translate(-50%,-50%)',
-                  width: 230,
-                  height: 230,
+                  width: 150,
+                  height: 150,
                   borderRadius: '50%',
                   background:
-                    'radial-gradient(circle, rgba(255,96,74,0.5) 0%, rgba(255,116,96,0.22) 42%, rgba(255,116,96,0.08) 60%, transparent 74%)',
+                    'radial-gradient(circle, rgba(255,96,74,0.55) 0%, rgba(255,116,96,0.24) 38%, transparent 66%)',
                   animation: 'sr-breathe 3s ease-in-out infinite',
                 }}
               />
