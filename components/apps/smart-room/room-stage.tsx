@@ -3,7 +3,6 @@
 import type { CSSProperties } from 'react'
 import type { SmartRoomState, DeviceId } from '@/lib/smart-room/types'
 import { roomVisuals } from '@/lib/smart-room/visuals'
-import { SCENE_LABELS } from '@/lib/smart-room/state'
 
 /* ── Face descriptor ──
    Each visible box face becomes one absolutely-positioned div inside the
@@ -275,9 +274,6 @@ export function RoomStage({
   const v = roomVisuals(state)
   const faces = buildScene(state, v)
 
-  const sceneLabel =
-    state.activeScene === 'manual' ? 'Manual' : SCENE_LABELS[state.activeScene]
-
   const sleeping = state.pose === 'bed'
   const head = proj(131, 30, 66)
 
@@ -525,31 +521,6 @@ export function RoomStage({
             'radial-gradient(100% 90% at 50% 40%,rgba(252,250,247,0.10),transparent 72%)',
         }}
       />
-      {/* scene caption */}
-      <div style={{ position: 'absolute', left: 28, top: 24, zIndex: 20 }}>
-        <div
-          style={{
-            fontFamily: "'Geist Mono',monospace",
-            fontSize: 10,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'rgba(196,41,29,0.7)',
-          }}
-        >
-          Active scene
-        </div>
-        <div
-          style={{
-            fontFamily: 'var(--font-inter)',
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            color: '#e2402f',
-          }}
-        >
-          {sceneLabel}
-        </div>
-      </div>
     </div>
   )
 }

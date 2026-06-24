@@ -8,7 +8,17 @@ import {
   useRef,
   useState,
 } from 'react'
-import { House, X, Waves } from 'lucide-react'
+import {
+  House,
+  X,
+  Target,
+  Moon,
+  Power,
+  Lightbulb,
+  Fan,
+  Blinds,
+  Monitor,
+} from 'lucide-react'
 import { keyToSignal, isDeleteKey } from '@/lib/bci-controls'
 import {
   initialState,
@@ -17,9 +27,34 @@ import {
   focusedItem,
   FOCUS_ORDER,
 } from '@/lib/smart-room/state'
-import type { SmartRoomState, SceneId, DeviceId } from '@/lib/smart-room/types'
+import type {
+  SmartRoomState,
+  SceneId,
+  DeviceId,
+  FocusItem,
+} from '@/lib/smart-room/types'
 import { RoomStage } from './room-stage'
 import { ControlRail } from './control-rail'
+
+/* Icon for the last-action pill — matches the rail icon for that scene/device. */
+function actionIcon(item: FocusItem) {
+  const props = { className: 'size-4', strokeWidth: 1.8 }
+  if (item.kind === 'scene') {
+    if (item.id === 'focus') return <Target {...props} />
+    if (item.id === 'sleep') return <Moon {...props} />
+    return <Power {...props} />
+  }
+  switch (item.id) {
+    case 'lights':
+      return <Lightbulb {...props} />
+    case 'fan':
+      return <Fan {...props} />
+    case 'blinds':
+      return <Blinds {...props} />
+    case 'monitor':
+      return <Monitor {...props} />
+  }
+}
 
 export type SmartRoomAppHandle = { handleKey: (key: string) => boolean }
 export type SmartRoomAppProps = {
@@ -46,6 +81,10 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
     )
     const [focusIndex, setFocusIndex] = useState(0)
     const [firing, setFiring] = useState(false)
+    const [lastItem, setLastItem] = useState<FocusItem>({
+      kind: 'scene',
+      id: startScene,
+    })
     const fireTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
@@ -65,6 +104,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
         const next = applyScene(state, id)
         setState(next)
         setFocusIndex(FOCUS_ORDER.findIndex((f) => f.kind === 'scene' && f.id === id))
+        setLastItem({ kind: 'scene', id })
         onNotify(next.lastAction)
       },
       [state, onNotify],
@@ -75,6 +115,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
         const next = cycleDevice(state, id)
         setState(next)
         setFocusIndex(FOCUS_ORDER.findIndex((f) => f.kind === 'device' && f.id === id))
+        setLastItem({ kind: 'device', id })
         onNotify(next.lastAction)
       },
       [state, onNotify],
@@ -87,11 +128,13 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
           if (dir === -1) return // reverse on a scene is a no-op
           const next = applyScene(state, item.id)
           setState(next)
+          setLastItem(item)
           onNotify(next.lastAction)
           fire()
         } else {
           const next = cycleDevice(state, item.id, dir)
           setState(next)
+          setLastItem(item)
           onNotify(next.lastAction)
           fire()
         }
@@ -244,7 +287,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
               </p>
               <div className="flex h-[58px] w-60 items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-4 shadow-sm">
                 <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/25">
-                  <Waves className="size-4" />
+                  {actionIcon(lastItem)}
                 </div>
                 <div className="min-w-0 leading-tight">
                   <p className="truncate text-sm font-semibold tracking-tight text-foreground">
