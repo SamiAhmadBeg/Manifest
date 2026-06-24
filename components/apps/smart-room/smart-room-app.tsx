@@ -122,7 +122,11 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
 
           <RoomStage state={state} />
 
-          <ControlRail state={state} />
+          <ControlRail
+            state={state}
+            firing={false}
+            onPick={(i) => setState((s) => ({ ...s, focusIndex: i }))}
+          />
         </div>
       </>
     )
