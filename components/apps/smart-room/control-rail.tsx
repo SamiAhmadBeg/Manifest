@@ -34,6 +34,9 @@ const TOKENS = {
 
 const HOVER_BG = 'rgba(255,255,255,0.5)'
 
+const FOCUS_RING = '0 0 0 2px rgba(38,40,46,0.55), 0 0 0 6px rgba(38,40,46,0.12)'
+const FIRING_RING = '0 0 0 2px #37b27d, 0 0 0 6px rgba(55,178,125,0.18)'
+
 const railStyle: CSSProperties = {
   position: 'absolute',
   left: '50%',
@@ -173,6 +176,8 @@ function deviceIcon(
 interface TileProps {
   active: boolean
   hovered: boolean
+  focused: boolean
+  firing: boolean
   icon: ReactNode
   label: string
   status?: string
@@ -185,6 +190,8 @@ interface TileProps {
 function Tile({
   active,
   hovered,
+  focused,
+  firing,
   icon,
   label,
   status,
@@ -211,7 +218,9 @@ function Tile({
     cursor: 'pointer',
     appearance: 'none',
     font: 'inherit',
-    transition: 'background .18s, border-color .18s',
+    transform: focused ? 'scale(1.04)' : 'none',
+    boxShadow: focused ? (firing ? FIRING_RING : FOCUS_RING) : 'none',
+    transition: 'background .18s, border-color .18s, box-shadow .18s, transform .18s',
   }
 
   return (
@@ -242,11 +251,15 @@ function Tile({
 export function ControlRail({
   state,
   showStatusText = true,
+  focusIndex,
+  firing,
   onApplyScene,
   onToggleDevice,
 }: {
   state: SmartRoomState
   showStatusText?: boolean
+  focusIndex: number
+  firing: boolean
   onApplyScene: (id: SceneId) => void
   onToggleDevice: (id: DeviceId) => void
 }) {
@@ -256,7 +269,7 @@ export function ControlRail({
     <div style={railStyle}>
       <span style={groupLabelStyle}>SCENES</span>
 
-      {SCENE_ORDER.map((id) => {
+      {SCENE_ORDER.map((id, i) => {
         const active = state.activeScene === id
         const tok = active ? TOKENS.active : TOKENS.inactive
         const key = `scene-${id}`
@@ -265,6 +278,8 @@ export function ControlRail({
             key={key}
             active={active}
             hovered={hovered === key}
+            focused={focusIndex === i}
+            firing={firing}
             icon={sceneIcon(id, tok.stroke)}
             label={SCENE_LABELS[id]}
             onClick={() => onApplyScene(id)}
@@ -278,7 +293,7 @@ export function ControlRail({
 
       <span style={groupLabelStyle}>DEVICES</span>
 
-      {DEVICE_ORDER.map((id) => {
+      {DEVICE_ORDER.map((id, i) => {
         const active = isDeviceActive(state, id)
         const tok = active ? TOKENS.active : TOKENS.inactive
         const key = `device-${id}`
@@ -287,6 +302,8 @@ export function ControlRail({
             key={key}
             active={active}
             hovered={hovered === key}
+            focused={focusIndex === SCENE_ORDER.length + i}
+            firing={firing}
             icon={deviceIcon(state, id, tok.stroke, active)}
             label={DEVICE_LABELS[id]}
             status={
