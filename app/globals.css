@@ -88,28 +88,19 @@
   }
 }
 
-/* ── Smart Room: registered custom property for dwell-ring animation ── */
-@property --dwell {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
 /* ── Smart Room: keyframes ── */
-@keyframes dwell      { from { --dwell: 0deg; }  to { --dwell: 360deg; } }
 @keyframes sr-spin    { to   { transform: rotate(360deg); } }
 @keyframes sr-breathe { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
-@keyframes sr-pulse {
-  0%, 100% { transform: translateX(-50%) scale(1);    opacity: .5;  }
-  50%      { transform: translateX(-50%) scale(1.14); opacity: .85; }
+@keyframes sr-zzz {
+  0%   { opacity: 0; transform: translateY(0)     scale(.8);  }
+  30%  { opacity: 1;                                          }
+  100% { opacity: 0; transform: translateY(-26px) scale(1.1); }
 }
-@keyframes sr-dwellbar { from { width: 4%; } to { width: 100%; } }
 
 /* ── Smart Room: reduced-motion guard ──
    Scoped to [data-sr-anim] so tw-animate-css and other app animations
-   are unaffected. Component tasks must add data-sr-anim to every
-   animated SR element (fan wrapper, screen glow, lamp pool, speaker
-   ring, dwell ring, dwell bar).
+   are unaffected. Every animated SR element carries data-sr-anim:
+   fan blades, fan icon, monitor bloom, lamp pool, ZZZ.
 */
 @media (prefers-reduced-motion: reduce) {
   [data-sr-anim] { animation: none !important; }

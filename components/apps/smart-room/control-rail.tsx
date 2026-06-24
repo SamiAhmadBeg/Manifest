@@ -1,200 +1,319 @@
 'use client'
 
-import { Fragment } from 'react'
-import { Play, Crosshair, Moon, Power, Lightbulb, Fan, Blinds, Speaker } from 'lucide-react'
+import { useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { Target, Moon, Power, Lightbulb, Fan, Blinds, Monitor } from 'lucide-react'
 import {
-  FOCUS_ORDER,
+  SCENE_LABELS,
   DEVICE_LABELS,
   isDeviceActive,
   deviceValue,
 } from '@/lib/smart-room/state'
 import type { SmartRoomState, SceneId, DeviceId } from '@/lib/smart-room/types'
 
-const RAIL_SCENE_LABEL: Record<SceneId, string> = {
-  movie:  'Movie',
-  focus:  'Focus',
-  sleep:  'Sleep',
-  alloff: 'All Off',
+/* ── Token table (README "Active vs inactive tile styling") ── */
+const TOKENS = {
+  active: {
+    borderColor: 'rgba(226,64,47,0.28)',
+    background: 'rgba(255,255,255,0.5)',
+    discBg: '#ffffff',
+    discShadow:
+      '0 4px 12px -4px rgba(226,64,47,.5), inset 0 0 0 1.6px rgba(226,64,47,.5)',
+    stroke: '#e2402f',
+    statusColor: '#c4291d',
+  },
+  inactive: {
+    borderColor: 'rgba(20,22,30,0.08)',
+    background: 'rgba(255,255,255,0)',
+    discBg: '#ededef',
+    discShadow: 'inset 0 0 0 1px rgba(20,22,30,.07)',
+    stroke: '#a6a8af',
+    statusColor: '#9a9da4',
+  },
+} as const
+
+const HOVER_BG = 'rgba(255,255,255,0.5)'
+
+const FOCUS_RING = '0 0 0 2px #e2402f, 0 0 0 6px rgba(226,64,47,0.18)'
+const FIRING_RING = '0 0 0 2px #37b27d, 0 0 0 6px rgba(55,178,125,0.18)'
+
+const railStyle: CSSProperties = {
+  position: 'absolute',
+  left: '50%',
+  bottom: '22px',
+  transform: 'translateX(-50%)',
+  zIndex: 30,
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '10px 14px',
+  borderRadius: '22px',
+  background: 'rgba(252,251,250,0.66)',
+  backdropFilter: 'blur(28px) saturate(1.6)',
+  WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
+  border: '1px solid rgba(255,255,255,0.7)',
+  boxShadow:
+    '0 1px 1px rgba(255,255,255,0.6) inset, 0 18px 50px -18px rgba(20,22,30,0.4)',
 }
 
-const SCENE_ICONS: Record<SceneId, React.ReactNode> = {
-  movie:  <Play   size={17} color="#56595f" />,
-  focus:  <Crosshair size={17} color="#56595f" />,
-  sleep:  <Moon   size={17} color="#56595f" />,
-  alloff: <Power  size={17} color="#56595f" />,
+const groupLabelStyle: CSSProperties = {
+  fontFamily: "'Geist Mono', monospace",
+  fontSize: '9px',
+  letterSpacing: '.16em',
+  textTransform: 'uppercase',
+  color: '#a3a6ad',
 }
 
-const DEVICE_ICONS: Record<DeviceId, React.ReactNode> = {
-  lights:  <Lightbulb size={17} color="#56595f" strokeWidth={1.7} />,
-  fan:     <Fan       size={17} color="#56595f" strokeWidth={1.7} />,
-  blinds:  <Blinds    size={17} color="#56595f" strokeWidth={1.7} />,
-  speaker: <Speaker   size={17} color="#56595f" strokeWidth={1.7} />,
+const dividerStyle: CSSProperties = {
+  width: '1px',
+  height: '48px',
+  background: 'rgba(20,22,30,0.1)',
+  margin: '0 5px',
 }
 
-const innerStyle: React.CSSProperties = {
-  width: '34px',
-  height: '34px',
+const discStyle: CSSProperties = {
+  width: '38px',
+  height: '38px',
   borderRadius: '50%',
-  background: '#fff',
   display: 'grid',
   placeItems: 'center',
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: '11px',
+const labelStyle: CSSProperties = {
+  fontFamily: 'var(--font-inter)',
+  fontSize: '10.5px',
   fontWeight: 600,
   color: '#56595f',
 }
 
-const badgeStyleBase: React.CSSProperties = {
+const statusStyleBase: CSSProperties = {
   fontFamily: "'Geist Mono', monospace",
-  fontSize: '9px',
+  fontSize: '8.5px',
   fontWeight: 600,
   letterSpacing: '.06em',
+  textTransform: 'uppercase',
+}
+
+const SCENE_ORDER: SceneId[] = ['focus', 'sleep', 'alloff']
+const DEVICE_ORDER: DeviceId[] = ['lights', 'fan', 'blinds', 'monitor']
+
+/* Closed-blinds glyph: rounded square frame with 4 evenly spaced slat lines.
+   Used because lucide-react@1.18 has no `BlindsClosed` export. */
+function BlindsClosedIcon({ color }: { color: string }) {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="8" x2="21" y2="8" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="16" x2="21" y2="16" />
+    </svg>
+  )
+}
+
+function sceneIcon(id: SceneId, color: string): ReactNode {
+  switch (id) {
+    case 'focus':
+      return <Target size={16} strokeWidth={1.7} color={color} />
+    case 'sleep':
+      return <Moon size={16} strokeWidth={1.7} color={color} />
+    case 'alloff':
+      return <Power size={16} strokeWidth={1.7} color={color} />
+  }
+}
+
+function deviceIcon(
+  state: SmartRoomState,
+  id: DeviceId,
+  color: string,
+  active: boolean,
+): ReactNode {
+  switch (id) {
+    case 'lights':
+      return (
+        <Lightbulb
+          size={16}
+          strokeWidth={1.7}
+          color={color}
+          fill={active ? 'rgba(226,64,47,0.16)' : 'none'}
+        />
+      )
+    case 'fan':
+      return (
+        <span
+          {...(active ? { 'data-sr-anim': '' } : {})}
+          style={{
+            display: 'grid',
+            placeItems: 'center',
+            ...(active
+              ? { animation: 'sr-spin 1.6s linear infinite' }
+              : {}),
+          }}
+        >
+          <Fan size={16} strokeWidth={1.7} color={color} />
+        </span>
+      )
+    case 'blinds':
+      return state.blinds === 'closed' ? (
+        <BlindsClosedIcon color={color} />
+      ) : (
+        <Blinds size={16} strokeWidth={1.7} color={color} />
+      )
+    case 'monitor':
+      return <Monitor size={16} strokeWidth={1.7} color={color} />
+  }
+}
+
+interface TileProps {
+  active: boolean
+  hovered: boolean
+  focused: boolean
+  firing: boolean
+  icon: ReactNode
+  label: string
+  status?: string
+  statusColor?: string
+  onClick: () => void
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+}
+
+function Tile({
+  active,
+  hovered,
+  focused,
+  firing,
+  icon,
+  label,
+  status,
+  statusColor,
+  onClick,
+  onMouseEnter,
+  onMouseLeave,
+}: TileProps) {
+  const tok = active ? TOKENS.active : TOKENS.inactive
+  // Hover only lightens an inactive tile; active tiles already use HOVER_BG.
+  const background =
+    !active && hovered ? HOVER_BG : tok.background
+
+  const tileStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '6px 9px',
+    borderRadius: '15px',
+    border: '1px solid',
+    borderColor: tok.borderColor,
+    background,
+    cursor: 'pointer',
+    appearance: 'none',
+    font: 'inherit',
+    transform: focused ? 'scale(1.04)' : 'none',
+    boxShadow: focused ? (firing ? FIRING_RING : FOCUS_RING) : 'none',
+    transition: 'background .18s, border-color .18s, box-shadow .18s, transform .18s',
+  }
+
+  return (
+    <button
+      type="button"
+      style={tileStyle}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <span
+        style={{
+          ...discStyle,
+          background: tok.discBg,
+          boxShadow: tok.discShadow,
+        }}
+      >
+        {icon}
+      </span>
+      <span style={labelStyle}>{label}</span>
+      {status !== undefined && (
+        <span style={{ ...statusStyleBase, color: statusColor }}>{status}</span>
+      )}
+    </button>
+  )
 }
 
 export function ControlRail({
   state,
+  showStatusText = true,
+  focusIndex,
   firing,
-  dwellShimmer = true,
-  onPick,
+  onApplyScene,
+  onToggleDevice,
 }: {
   state: SmartRoomState
+  showStatusText?: boolean
+  focusIndex: number
   firing: boolean
-  dwellShimmer?: boolean
-  onPick: (i: number) => void
+  onApplyScene: (id: SceneId) => void
+  onToggleDevice: (id: DeviceId) => void
 }) {
-  const railStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: '50%',
-    bottom: '74px',
-    transform: 'translateX(-50%)',
-    zIndex: 30,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '12px 16px',
-    borderRadius: '24px',
-    background: 'rgba(252,251,250,0.72)',
-    backdropFilter: 'blur(26px) saturate(1.5)',
-    WebkitBackdropFilter: 'blur(26px) saturate(1.5)',
-    border: '1px solid rgba(255,255,255,0.7)',
-    boxShadow:
-      '0 1px 1px rgba(255,255,255,0.6) inset, 0 18px 50px -18px rgba(20,22,30,0.4)',
-  }
-
-  const groupLabelBase: React.CSSProperties = {
-    fontFamily: "'Geist Mono', monospace",
-    fontSize: '9.5px',
-    letterSpacing: '.16em',
-    textTransform: 'uppercase',
-    color: '#a3a6ad',
-  }
-
-  const scenesLabelStyle: React.CSSProperties = {
-    ...groupLabelBase,
-    padding: '0 6px 0 4px',
-  }
-
-  const devicesLabelStyle: React.CSSProperties = {
-    ...groupLabelBase,
-    padding: '0 6px 0 0',
-  }
-
-  const dividerStyle: React.CSSProperties = {
-    width: '1px',
-    height: '46px',
-    background: 'rgba(20,22,30,0.1)',
-    margin: '0 6px',
-  }
+  const [hovered, setHovered] = useState<string | null>(null)
 
   return (
     <div style={railStyle}>
-      <span style={scenesLabelStyle}>SCENES</span>
+      <span style={groupLabelStyle}>SCENES</span>
 
-      {FOCUS_ORDER.map((item, i) => {
-        const foc = i === state.focusIndex
-
-        const bc = foc
-          ? firing ? '#37b27d' : '#e23b2e'
-          : 'rgba(20,22,30,0.10)'
-
-        const bg = foc
-          ? firing ? 'rgba(55,178,125,0.10)' : 'rgba(226,59,46,0.07)'
-          : 'rgba(255,255,255,0)'
-
-        const showConic = foc && dwellShimmer
-        const active = item.kind === 'device' && isDeviceActive(state, item.id)
-        const badgeColor = active ? '#c4291d' : '#9a9da4'
-        const rb = showConic
-          ? firing
-            ? 'conic-gradient(#37b27d var(--dwell),rgba(20,22,30,0.1) 0)'
-            : 'conic-gradient(#e23b2e var(--dwell),rgba(20,22,30,0.1) 0)'
-          : '#f1f1f2'
-
-        const tileStyle: React.CSSProperties = {
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '8px 11px',
-          borderRadius: '16px',
-          border: '1px solid',
-          borderColor: bc,
-          background: bg,
-          cursor: 'pointer',
-          font: 'inherit',
-          appearance: 'none',
-        }
-
-        const ringStyle: React.CSSProperties = {
-          width: '42px',
-          height: '42px',
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          background: rb,
-          ...(showConic ? { animation: 'dwell 1.7s linear infinite' } : {}),
-        }
-
-        const label =
-          item.kind === 'scene'
-            ? RAIL_SCENE_LABEL[item.id]
-            : DEVICE_LABELS[item.id]
-
-        const icon =
-          item.kind === 'scene'
-            ? SCENE_ICONS[item.id]
-            : DEVICE_ICONS[item.id]
-
+      {SCENE_ORDER.map((id, i) => {
+        const active = state.activeScene === id
+        const tok = active ? TOKENS.active : TOKENS.inactive
+        const key = `scene-${id}`
         return (
-          <Fragment key={`${item.kind}-${item.id}`}>
-            {i === 4 && (
-              <>
-                <span style={dividerStyle} />
-                <span style={devicesLabelStyle}>DEVICES</span>
-              </>
-            )}
-            <button
-              style={tileStyle}
-              onClick={() => onPick(i)}
-            >
-              <div
-                style={ringStyle}
-                {...(showConic ? { 'data-sr-anim': '' } : {})}
-              >
-                <div style={innerStyle}>
-                  {icon}
-                </div>
-              </div>
-              <span style={labelStyle}>{label}</span>
-              {item.kind === 'device' && (
-                <span style={{ ...badgeStyleBase, color: badgeColor }}>
-                  {deviceValue(state, item.id).toUpperCase()}
-                </span>
-              )}
-            </button>
-          </Fragment>
+          <Tile
+            key={key}
+            active={active}
+            hovered={hovered === key}
+            focused={focusIndex === i}
+            firing={firing}
+            icon={sceneIcon(id, tok.stroke)}
+            label={SCENE_LABELS[id]}
+            onClick={() => onApplyScene(id)}
+            onMouseEnter={() => setHovered(key)}
+            onMouseLeave={() => setHovered((prev) => (prev === key ? null : prev))}
+          />
+        )
+      })}
+
+      <span style={dividerStyle} />
+
+      <span style={groupLabelStyle}>DEVICES</span>
+
+      {DEVICE_ORDER.map((id, i) => {
+        const active = isDeviceActive(state, id)
+        const tok = active ? TOKENS.active : TOKENS.inactive
+        const key = `device-${id}`
+        return (
+          <Tile
+            key={key}
+            active={active}
+            hovered={hovered === key}
+            focused={focusIndex === SCENE_ORDER.length + i}
+            firing={firing}
+            icon={deviceIcon(state, id, tok.stroke, active)}
+            label={DEVICE_LABELS[id]}
+            status={
+              showStatusText ? deviceValue(state, id).toUpperCase() : undefined
+            }
+            statusColor={tok.statusColor}
+            onClick={() => onToggleDevice(id)}
+            onMouseEnter={() => setHovered(key)}
+            onMouseLeave={() => setHovered((prev) => (prev === key ? null : prev))}
+          />
         )
       })}
     </div>

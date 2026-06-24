@@ -8,66 +8,138 @@ import {
   useRef,
   useState,
 } from 'react'
-import { House, X } from 'lucide-react'
-import { keyToSignal } from '@/lib/bci-controls'
+import {
+  House,
+  X,
+  Target,
+  Moon,
+  Power,
+  Lightbulb,
+  Fan,
+  Blinds,
+  Monitor,
+} from 'lucide-react'
+import { keyToSignal, isDeleteKey } from '@/lib/bci-controls'
 import {
   initialState,
-  focusPrev,
-  focusNext,
-  cycle,
+  applyScene,
+  cycleDevice,
   focusedItem,
-  focusLabel,
-  deviceValue,
-  SCENE_LABELS,
-  DEVICE_LABELS,
+  FOCUS_ORDER,
 } from '@/lib/smart-room/state'
-import type { SmartRoomState } from '@/lib/smart-room/types'
+import type {
+  SmartRoomState,
+  SceneId,
+  DeviceId,
+  FocusItem,
+} from '@/lib/smart-room/types'
 import { RoomStage } from './room-stage'
 import { ControlRail } from './control-rail'
+
+/* Icon for the last-action pill — matches the rail icon for that scene/device. */
+function actionIcon(item: FocusItem) {
+  const props = { className: 'size-4', strokeWidth: 1.8 }
+  if (item.kind === 'scene') {
+    if (item.id === 'focus') return <Target {...props} />
+    if (item.id === 'sleep') return <Moon {...props} />
+    return <Power {...props} />
+  }
+  switch (item.id) {
+    case 'lights':
+      return <Lightbulb {...props} />
+    case 'fan':
+      return <Fan {...props} />
+    case 'blinds':
+      return <Blinds {...props} />
+    case 'monitor':
+      return <Monitor {...props} />
+  }
+}
 
 export type SmartRoomAppHandle = { handleKey: (key: string) => boolean }
 export type SmartRoomAppProps = {
   onClose: () => void
   onNotify: (text: string) => void
+  startScene?: SceneId
+  showTelemetry?: boolean
+  showStatusText?: boolean
 }
 
 export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
-  function SmartRoomApp({ onClose, onNotify }, ref) {
-    const [state, setState] = useState<SmartRoomState>(initialState)
+  function SmartRoomApp(
+    {
+      onClose,
+      onNotify,
+      startScene = 'focus',
+      showTelemetry = true,
+      showStatusText = true,
+    },
+    ref,
+  ) {
+    const [state, setState] = useState<SmartRoomState>(() =>
+      initialState(startScene),
+    )
+    const [focusIndex, setFocusIndex] = useState(0)
     const [firing, setFiring] = useState(false)
-    const [lastAction, setLastAction] = useState('Movie Night scene')
+    const [lastItem, setLastItem] = useState<FocusItem>({
+      kind: 'scene',
+      id: startScene,
+    })
+    const fireTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const showTelemetry = true
-
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-    // Cleanup on unmount
     useEffect(() => {
       return () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current)
+        if (fireTimer.current) clearTimeout(fireTimer.current)
       }
     }, [])
 
     const fire = useCallback(() => {
       setFiring(true)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(() => setFiring(false), 460)
+      if (fireTimer.current) clearTimeout(fireTimer.current)
+      fireTimer.current = setTimeout(() => setFiring(false), 300)
     }, [])
 
-    const commit = useCallback(
-      (base: SmartRoomState, dir: 1 | -1) => {
-        const item = focusedItem(base)
-        const next = cycle(base, dir)
-        const toast =
-          item.kind === 'scene'
-            ? `${SCENE_LABELS[item.id]} scene`
-            : `${DEVICE_LABELS[item.id]} ${deviceValue(next, item.id)}`
+    const onApplyScene = useCallback(
+      (id: SceneId) => {
+        const next = applyScene(state, id)
         setState(next)
-        setLastAction(toast)
-        onNotify(toast)
-        fire()
+        setFocusIndex(FOCUS_ORDER.findIndex((f) => f.kind === 'scene' && f.id === id))
+        setLastItem({ kind: 'scene', id })
+        onNotify(next.lastAction)
       },
-      [onNotify, fire],
+      [state, onNotify],
+    )
+
+    const onToggleDevice = useCallback(
+      (id: DeviceId) => {
+        const next = cycleDevice(state, id)
+        setState(next)
+        setFocusIndex(FOCUS_ORDER.findIndex((f) => f.kind === 'device' && f.id === id))
+        setLastItem({ kind: 'device', id })
+        onNotify(next.lastAction)
+      },
+      [state, onNotify],
+    )
+
+    const activate = useCallback(
+      (dir: 1 | -1) => {
+        const item = focusedItem(focusIndex)
+        if (item.kind === 'scene') {
+          if (dir === -1) return // reverse on a scene is a no-op
+          const next = applyScene(state, item.id)
+          setState(next)
+          setLastItem(item)
+          onNotify(next.lastAction)
+          fire()
+        } else {
+          const next = cycleDevice(state, item.id, dir)
+          setState(next)
+          setLastItem(item)
+          onNotify(next.lastAction)
+          fire()
+        }
+      },
+      [focusIndex, state, onNotify, fire],
     )
 
     const handleKey = useCallback(
@@ -79,39 +151,42 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
           return true
         }
         if (signal === 'scroll-left') {
-          setState(focusPrev)
-          onNotify('Scrolled Left')
+          setFocusIndex((i) => (i - 1 + FOCUS_ORDER.length) % FOCUS_ORDER.length)
           return true
         }
         if (signal === 'scroll-right') {
-          setState(focusNext)
-          onNotify('Scrolled Right')
+          setFocusIndex((i) => (i + 1) % FOCUS_ORDER.length)
           return true
         }
         if (signal === 'jaw-clench') {
-          commit(state, 1)
+          activate(1)
           return true
         }
-        if (key === 'Backspace' || signal === 'long-blink') {
-          commit(state, -1)
+        if (signal === 'long-blink' || isDeleteKey(key)) {
+          activate(-1)
           return true
         }
         return false
       },
-      [state, onClose, onNotify, commit],
+      [onClose, onNotify, activate],
     )
 
     useImperativeHandle(ref, () => ({ handleKey }), [handleKey])
 
-    const onPick = useCallback(
-      (i: number) => {
-        commit({ ...state, focusIndex: i }, 1)
-      },
-      [state, commit],
-    )
+    const focused = focusedItem(focusIndex)
+    const focusedDevice = focused.kind === 'device' ? focused.id : undefined
 
     return (
-      <>
+      <div
+        style={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#ffffff',
+          color: '#26282e',
+          overflow: 'hidden',
+        }}
+      >
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div
           style={{
@@ -136,10 +211,10 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
                 width: 34,
                 height: 34,
                 borderRadius: 11,
-                background: '#e23b2e',
+                background: '#e2402f',
                 display: 'grid',
                 placeItems: 'center',
-                boxShadow: '0 4px 12px -2px rgba(226,59,46,0.5)',
+                boxShadow: '0 4px 12px -2px rgba(226,64,47,0.5)',
               }}
             >
               <House size={17} color="#fff" strokeWidth={1.8} />
@@ -147,7 +222,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
             <div style={{ lineHeight: 1.15 }}>
               <div
                 style={{
-                  fontFamily: "'Geist Mono', monospace",
+                  fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
                   fontSize: 10,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
@@ -158,6 +233,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
               </div>
               <div
                 style={{
+                  fontFamily: 'var(--font-inter)',
                   fontSize: 15,
                   fontWeight: 600,
                   letterSpacing: '-0.01em',
@@ -169,171 +245,73 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
             </div>
           </div>
 
-          {/* Right: REPLAY chip + Exit pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {showTelemetry && (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  fontFamily: "'Geist Mono', monospace",
-                  fontSize: 11,
-                  letterSpacing: '0.08em',
-                  color: '#83868d',
-                  padding: '6px 11px',
-                  background: '#f4f4f5',
-                  borderRadius: 999,
-                }}
-              >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: '#e2a23b',
-                    boxShadow: '0 0 0 3px rgba(226,162,59,0.18)',
-                  }}
-                />
-                REPLAY
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 7,
-                fontSize: 12,
-                fontWeight: 500,
-                color: '#6b6e76',
-                padding: '7px 13px',
-                border: '1px solid rgba(20,22,30,0.1)',
-                borderRadius: 999,
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              <X size={13} />
-              Exit
-            </button>
-          </div>
+          {/* Right: Exit pill */}
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              fontSize: 12,
+              fontWeight: 500,
+              color: '#6b6e76',
+              padding: '7px 13px',
+              border: '1px solid rgba(20,22,30,0.1)',
+              borderRadius: 999,
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={13} />
+            Exit
+          </button>
         </div>
 
-        {/* ── Room container ─────────────────────────────────────────────────── */}
+        {/* ── Room stage area ────────────────────────────────────────────────── */}
         <div
           style={{
             flex: 1,
             position: 'relative',
             minHeight: 0,
             overflow: 'hidden',
-            background: '#d9d4ce',
           }}
         >
-          {/* 1. Room stage fills container */}
-          <RoomStage state={state} />
+          <RoomStage state={state} focusedDevice={focusedDevice} />
 
-          {/* 2. Last-action toast */}
+          {/* Last-action toast — matches the OS "Recent Action" pill */}
           {showTelemetry && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 24,
-                top: 22,
-                zIndex: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-                gap: 3,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "'Geist Mono', monospace",
-                  fontSize: 9,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255,255,255,0.6)',
-                  textShadow: '0 1px 6px rgba(0,0,0,0.35)',
-                }}
-              >
-                LAST ACTION
-              </span>
-              <span
-                style={{
-                  fontFamily: "'Geist Mono', monospace",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: '#fff',
-                  textShadow: '0 1px 8px rgba(0,0,0,0.5)',
-                }}
-              >
-                {lastAction}
-              </span>
+            <div className="pointer-events-none absolute right-6 top-5 z-20">
+              <p className="mb-2 pr-1 text-right text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Last Action
+              </p>
+              <div className="flex h-[58px] w-60 items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-4 shadow-sm">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/25">
+                  {actionIcon(lastItem)}
+                </div>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                    {state.lastAction}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Neural input · just now
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* 3. Control rail — self-positions at bottom:74px */}
-          <ControlRail state={state} firing={firing} dwellShimmer onPick={onPick} />
-
-          {/* 4. Controls + dwell strip */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              bottom: 26,
-              transform: 'translateX(-50%)',
-              zIndex: 30,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 18,
-              fontFamily: "'Geist Mono', monospace",
-              fontSize: 11,
-              color: 'rgba(255,255,255,0.82)',
-              textShadow: '0 1px 6px rgba(0,0,0,0.4)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {showTelemetry && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ letterSpacing: '0.1em' }}>DWELL</span>
-                {/* track */}
-                <div
-                  style={{
-                    position: 'relative',
-                    width: 90,
-                    height: 6,
-                    borderRadius: 3,
-                    background: 'rgba(255,255,255,0.25)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* fill */}
-                  <div
-                    data-sr-anim=""
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      height: '100%',
-                      borderRadius: 3,
-                      background: '#e23b2e',
-                      animation: 'sr-dwellbar 1.7s linear infinite',
-                    }}
-                  />
-                </div>
-                <span style={{ color: '#ffd9c2' }}>{focusLabel(state)}</span>
-              </div>
-            )}
-            <span style={{ opacity: 0.5 }}>·</span>
-            <span>← → focus</span>
-            <span>jaw <b style={{ color: '#fff', fontWeight: 600 }}>next</b></span>
-            <span>blink <b style={{ color: '#fff', fontWeight: 600 }}>prev</b></span>
-            <span>brow <b style={{ color: '#fff', fontWeight: 600 }}>back</b></span>
-          </div>
+          {/* Control rail — self-positions at bottom:22px */}
+          <ControlRail
+            state={state}
+            showStatusText={showStatusText}
+            focusIndex={focusIndex}
+            firing={firing}
+            onApplyScene={onApplyScene}
+            onToggleDevice={onToggleDevice}
+          />
         </div>
-      </>
+      </div>
     )
   },
 )
