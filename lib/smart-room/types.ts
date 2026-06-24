@@ -7,6 +7,10 @@ export type Blinds  = 'open' | 'closed'
 export type Monitor = 'on' | 'off'
 export type Pose    = 'desk' | 'bed'
 
+export type FocusItem =
+  | { kind: 'scene'; id: SceneId }
+  | { kind: 'device'; id: DeviceId }
+
 export interface SmartRoomState {
   monitor: Monitor
   lights: Lights

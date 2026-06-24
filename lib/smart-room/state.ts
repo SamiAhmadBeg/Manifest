@@ -5,6 +5,7 @@ import type {
   Fan,
   Pose,
   SmartRoomState,
+  FocusItem,
 } from './types'
 
 export const SCENE_LABELS: Record<SceneId, string> = {
@@ -18,6 +19,25 @@ export const DEVICE_LABELS: Record<DeviceId, string> = {
   fan:     'Fan',
   blinds:  'Blinds',
   monitor: 'Monitor',
+}
+
+export const FOCUS_ORDER: FocusItem[] = [
+  { kind: 'scene', id: 'focus' },
+  { kind: 'scene', id: 'sleep' },
+  { kind: 'scene', id: 'alloff' },
+  { kind: 'device', id: 'lights' },
+  { kind: 'device', id: 'fan' },
+  { kind: 'device', id: 'blinds' },
+  { kind: 'device', id: 'monitor' },
+]
+
+export function focusedItem(focusIndex: number): FocusItem {
+  return FOCUS_ORDER[focusIndex]
+}
+
+export function focusLabel(focusIndex: number): string {
+  const item = FOCUS_ORDER[focusIndex]
+  return item.kind === 'scene' ? SCENE_LABELS[item.id] : DEVICE_LABELS[item.id]
 }
 
 type ScenePreset = Partial<Pick<SmartRoomState, 'monitor' | 'lights' | 'fan' | 'blinds'>>
@@ -78,14 +98,30 @@ export function nextFan(v: Fan): Fan {
   return 'off'
 }
 
-export function cycleDevice(state: SmartRoomState, id: DeviceId): SmartRoomState {
+export function prevLights(v: Lights): Lights {
+  if (v === 'off') return 'on'
+  if (v === 'on') return 'dim'
+  return 'off'
+}
+
+export function prevFan(v: Fan): Fan {
+  if (v === 'off') return 'high'
+  if (v === 'high') return 'low'
+  return 'off'
+}
+
+export function cycleDevice(
+  state: SmartRoomState,
+  id: DeviceId,
+  dir: 1 | -1 = 1,
+): SmartRoomState {
   const next: SmartRoomState = { ...state, activeScene: 'manual' }
   switch (id) {
     case 'lights':
-      next.lights = nextLights(state.lights)
+      next.lights = dir === 1 ? nextLights(state.lights) : prevLights(state.lights)
       break
     case 'fan':
-      next.fan = nextFan(state.fan)
+      next.fan = dir === 1 ? nextFan(state.fan) : prevFan(state.fan)
       break
     case 'blinds':
       next.blinds = state.blinds === 'open' ? 'closed' : 'open'

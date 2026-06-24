@@ -9,7 +9,13 @@ import {
   nextFan,
   SCENE_LABELS,
   DEVICE_LABELS,
+  FOCUS_ORDER,
+  focusedItem,
+  focusLabel,
+  prevLights,
+  prevFan,
 } from './state'
+import type { FocusItem } from './types'
 
 // ── labels ────────────────────────────────────────────────────────────────────
 describe('labels', () => {
@@ -223,5 +229,67 @@ describe('isDeviceActive', () => {
   it('monitor === on', () => {
     expect(isDeviceActive(initialState('focus'), 'monitor')).toBe(true) // on
     expect(isDeviceActive(initialState('sleep'), 'monitor')).toBe(false) // off
+  })
+})
+
+describe('FOCUS_ORDER', () => {
+  it('is 3 scenes then 4 devices in rail order', () => {
+    expect(FOCUS_ORDER).toEqual<FocusItem[]>([
+      { kind: 'scene', id: 'focus' },
+      { kind: 'scene', id: 'sleep' },
+      { kind: 'scene', id: 'alloff' },
+      { kind: 'device', id: 'lights' },
+      { kind: 'device', id: 'fan' },
+      { kind: 'device', id: 'blinds' },
+      { kind: 'device', id: 'monitor' },
+    ])
+  })
+})
+
+describe('focusedItem / focusLabel', () => {
+  it('returns the item and label at an index', () => {
+    expect(focusedItem(0)).toEqual({ kind: 'scene', id: 'focus' })
+    expect(focusLabel(0)).toBe('Focus')
+    expect(focusedItem(3)).toEqual({ kind: 'device', id: 'lights' })
+    expect(focusLabel(3)).toBe('Lights')
+    expect(focusLabel(6)).toBe('Monitor')
+  })
+})
+
+describe('prevLights / prevFan (reverse cycles)', () => {
+  it('prevLights goes off->on->dim->off', () => {
+    expect(prevLights('off')).toBe('on')
+    expect(prevLights('on')).toBe('dim')
+    expect(prevLights('dim')).toBe('off')
+  })
+  it('prevFan goes off->high->low->off', () => {
+    expect(prevFan('off')).toBe('high')
+    expect(prevFan('high')).toBe('low')
+    expect(prevFan('low')).toBe('off')
+  })
+})
+
+describe('cycleDevice direction', () => {
+  it('defaults to forward (dir omitted) unchanged', () => {
+    const s = initialState('alloff') // lights off, fan off
+    expect(cycleDevice(s, 'lights').lights).toBe('dim')
+    expect(cycleDevice(s, 'fan').fan).toBe('low')
+  })
+  it('steps lights/fan backward with dir -1', () => {
+    const s = initialState('alloff')
+    expect(cycleDevice(s, 'lights', -1).lights).toBe('on')
+    expect(cycleDevice(s, 'fan', -1).fan).toBe('high')
+  })
+  it('toggles binary monitor/blinds regardless of dir', () => {
+    const s = initialState('focus') // monitor on, blinds open
+    expect(cycleDevice(s, 'monitor', -1).monitor).toBe('off')
+    expect(cycleDevice(s, 'blinds', -1).blinds).toBe('closed')
+    expect(cycleDevice(s, 'monitor', 1).monitor).toBe('off')
+  })
+  it('dir -1 still sets manual + correct lastAction', () => {
+    const s = initialState('alloff')
+    const n = cycleDevice(s, 'lights', -1)
+    expect(n.activeScene).toBe('manual')
+    expect(n.lastAction).toBe('Lights ON')
   })
 })
