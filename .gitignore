@@ -16,3 +16,9 @@ out/
 .DS_Store
 # brainstorming visual companion
 .superpowers/
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+
+# contextos local cache
+.contextos/
