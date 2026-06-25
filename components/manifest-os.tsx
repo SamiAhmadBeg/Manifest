@@ -11,6 +11,7 @@ import { AppOpenView } from '@/components/app-open-view'
 import type { MoviesAppHandle } from '@/components/apps/movies/movies-app'
 import type { SnakeAppHandle } from '@/components/apps/snake/snake-app'
 import type { SmartRoomAppHandle } from '@/components/apps/smart-room/smart-room-app'
+import type { AssistantAppHandle } from '@/components/apps/assistant/assistant-app'
 import {
   NotificationPanel,
   type NotificationItem,
@@ -28,6 +29,7 @@ export function ManifestOS() {
   const moviesRef = useRef<MoviesAppHandle>(null)
   const snakeRef = useRef<SnakeAppHandle>(null)
   const smartRoomRef = useRef<SmartRoomAppHandle>(null)
+  const assistantRef = useRef<AssistantAppHandle>(null)
 
   const openApp = openIndex !== null ? APPS[openIndex] : null
 
@@ -78,6 +80,7 @@ export function ManifestOS() {
     }
     if (openApp?.id === 'snake') return 'snake'
     if (openApp?.id === 'smartroom') return 'smart-room'
+    if (openApp?.id === 'assistant') return 'assistant'
     return 'app'
   })()
 
@@ -102,6 +105,14 @@ export function ManifestOS() {
 
         if (openApp?.id === 'smartroom') {
           const handled = smartRoomRef.current?.handleKey(e.key) ?? false
+          if (handled) {
+            e.preventDefault()
+            return
+          }
+        }
+
+        if (openApp?.id === 'assistant') {
+          const handled = assistantRef.current?.handleKey(e.key) ?? false
           if (handled) {
             e.preventDefault()
             return
@@ -147,6 +158,13 @@ export function ManifestOS() {
             backgroundSize: '44px 44px',
           }}
         />
+        <div
+          className="absolute left-1/2 top-1/3 h-[480px] w-[480px] -translate-x-1/2 rounded-full opacity-40 blur-3xl"
+          style={{
+            background:
+              'radial-gradient(circle, oklch(0.58 0.21 27 / 0.08), transparent 65%)',
+          }}
+        />
       </div>
 
       <TopBar />
@@ -174,6 +192,7 @@ export function ManifestOS() {
         moviesRef={moviesRef}
         snakeRef={snakeRef}
         smartRoomRef={smartRoomRef}
+        assistantRef={assistantRef}
         onMoviesViewChange={(view) => setMoviesView(view)}
         moviesView={moviesView}
       />

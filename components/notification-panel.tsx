@@ -14,7 +14,7 @@ export function NotificationPanel({ item }: { item: NotificationItem }) {
       <p className="mb-2 pl-1 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
         Recent Action
       </p>
-      <div className="relative h-[58px] w-60 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="relative h-[58px] w-60 overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-sm backdrop-blur-sm">
         <AnimatePresence mode="popLayout">
           <motion.div
             key={item.id}

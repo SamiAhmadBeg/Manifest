@@ -50,33 +50,31 @@ export const AddMovieDialog = forwardRef<
         initial={{ scale: 0.92, opacity: 0, y: 12 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-        className="w-full max-w-md overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-border/80 bg-card shadow-2xl"
       >
-        <div className="border-b border-border px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm shadow-primary/25">
-              <Film className="size-4" strokeWidth={1.6} />
-            </div>
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                Add to Library
-              </p>
-              <h3 className="text-lg font-semibold tracking-tight">Name your movie</h3>
-            </div>
+        <div className="border-b border-border/80 px-6 py-6 text-center">
+          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-sm shadow-primary/25">
+            <Film className="size-5" strokeWidth={1.6} />
           </div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
+            Add to Library
+          </p>
+          <h3 className="mt-1.5 text-xl font-semibold tracking-tight">
+            Name your movie
+          </h3>
         </div>
 
         <form
-          className="space-y-4 px-6 py-5"
+          className="space-y-5 px-6 py-6"
           onSubmit={(e) => {
             e.preventDefault()
             submit()
           }}
         >
-          <div>
+          <div className="text-center">
             <label
               htmlFor="movie-name"
-              className="mb-2 block text-xs font-medium text-muted-foreground"
+              className="mb-3 block text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground"
             >
               Movie name
             </label>
@@ -88,36 +86,36 @@ export const AddMovieDialog = forwardRef<
               placeholder="Enter a name…"
               autoComplete="off"
               onKeyDown={(e) => e.stopPropagation()}
-              className="w-full rounded-xl border border-border bg-secondary/50 px-4 py-3 text-sm font-medium outline-none ring-primary transition-shadow focus:ring-2"
+              className="w-full rounded-2xl border border-border/80 bg-secondary/40 px-5 py-3.5 text-center text-sm font-medium outline-none ring-primary transition-all placeholder:text-muted-foreground/60 focus:border-primary/30 focus:bg-card focus:ring-2 focus:ring-primary/20"
             />
-            <p className="mt-2 truncate text-[11px] text-muted-foreground">
-              File: {fileLabel}
+            <p className="mt-3 truncate text-[11px] text-muted-foreground">
+              {fileLabel}
             </p>
           </div>
 
           {queueRemaining > 0 && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground">
               +{queueRemaining} more file{queueRemaining === 1 ? '' : 's'} to name
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-1">
+          <div className="flex items-center justify-center gap-3 pt-1">
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-full border border-border bg-secondary px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/80"
+              className="rounded-full border border-border bg-secondary px-5 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/80"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 transition-opacity hover:opacity-90"
+              className="rounded-full bg-primary px-5 py-2.5 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 transition-opacity hover:opacity-90"
             >
               Add to Library
             </button>
           </div>
 
-          <p className="text-center text-[11px] text-muted-foreground">
+          <p className="text-center text-[11px] tracking-wide text-muted-foreground">
             ↵ save · Esc cancel
           </p>
         </form>

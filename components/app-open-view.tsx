@@ -12,6 +12,10 @@ import {
   SmartRoomApp,
   type SmartRoomAppHandle,
 } from '@/components/apps/smart-room/smart-room-app'
+import {
+  AssistantApp,
+  type AssistantAppHandle,
+} from '@/components/apps/assistant/assistant-app'
 import type { MoviesView } from '@/lib/movies/types'
 
 export function AppOpenView({
@@ -21,6 +25,7 @@ export function AppOpenView({
   moviesRef,
   snakeRef,
   smartRoomRef,
+  assistantRef,
   onMoviesViewChange,
   moviesView,
 }: {
@@ -30,6 +35,7 @@ export function AppOpenView({
   moviesRef: React.RefObject<MoviesAppHandle | null>
   snakeRef: React.RefObject<SnakeAppHandle | null>
   smartRoomRef: React.RefObject<SmartRoomAppHandle | null>
+  assistantRef: React.RefObject<AssistantAppHandle | null>
   onMoviesViewChange: (view: MoviesView | null) => void
   moviesView: MoviesView | null
 }) {
@@ -62,7 +68,7 @@ export function AppOpenView({
             animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
             exit={{ scale: 0.9, opacity: 0, y: 20, filter: 'blur(8px)' }}
             transition={{ type: 'spring', stiffness: 200, damping: 26 }}
-            className="relative flex h-[80%] w-[88%] max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl"
+            className="relative flex h-[80%] w-[88%] max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-border/80 bg-card shadow-2xl shadow-foreground/5"
           >
             {app.id === 'movies' ? (
               <MoviesApp
@@ -76,6 +82,12 @@ export function AppOpenView({
             ) : app.id === 'smartroom' ? (
               <SmartRoomApp
                 ref={smartRoomRef}
+                onClose={onClose}
+                onNotify={onNotify}
+              />
+            ) : app.id === 'assistant' ? (
+              <AssistantApp
+                ref={assistantRef}
                 onClose={onClose}
                 onNotify={onNotify}
               />

@@ -30,7 +30,7 @@ export const APPS: ManifestApp[] = [
   { id: 'photos', name: 'Photos', tagline: '2,481 items', icon: ImageIcon },
   { id: 'movies', name: 'Movies', tagline: 'Your library', icon: Clapperboard },
   { id: 'snake', name: 'Snake', tagline: 'High score chase', icon: Gamepad2 },
-  { id: 'assistant', name: 'AI Assistant', tagline: 'Ready', icon: Sparkles },
+  { id: 'assistant', name: 'AI Assistant', tagline: 'Voice · GPT', icon: Sparkles },
   { id: 'music', name: 'Music', tagline: 'Library', icon: Disc3 },
   { id: 'maps', name: 'Maps', tagline: 'Nearby', icon: Map },
   { id: 'smartroom', name: 'Smart Room', tagline: 'Set the scene', icon: House },

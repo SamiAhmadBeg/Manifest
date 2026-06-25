@@ -226,20 +226,21 @@ export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 p-6">
-          <div className="flex w-full max-w-lg items-center justify-between px-1">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="flex w-full max-w-lg items-center justify-center gap-12 px-1">
+            <div className="text-center">
+              <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
                 Score
               </p>
-              <p className="text-2xl font-semibold tabular-nums tracking-tight">
+              <p className="text-3xl font-semibold tabular-nums tracking-tight">
                 {score}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="h-8 w-px bg-border/80" />
+            <div className="text-center">
+              <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
                 High Score
               </p>
-              <p className="text-2xl font-semibold tabular-nums tracking-tight text-primary">
+              <p className="text-3xl font-semibold tabular-nums tracking-tight text-primary">
                 {highScore}
               </p>
             </div>

@@ -21,6 +21,7 @@ export type ControlsMode =
   | 'movies-naming'
   | 'snake'
   | 'smart-room'
+  | 'assistant'
 
 function controlsForMode(mode: ControlsMode): Control[] {
   switch (mode) {
@@ -60,6 +61,11 @@ function controlsForMode(mode: ControlsMode): Control[] {
         { keys: '→', label: 'Next' },
         { keys: '↵', label: 'Select' },
         { keys: '↑', label: 'Exit' },
+      ]
+    case 'assistant':
+      return [
+        { keys: '↵', label: 'Start mic' },
+        { keys: 'Esc', label: 'Exit' },
       ]
     case 'app':
     default:

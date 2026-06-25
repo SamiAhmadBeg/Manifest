@@ -154,11 +154,11 @@ export function MovieLibrary({
         </div>
       </motion.div>
 
-      <div className="border-b border-border px-6 py-4">
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+      <div className="border-b border-border/80 px-6 py-5 text-center">
+        <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
           Your Library
         </p>
-        <h3 className="mt-1 text-xl font-semibold tracking-tight">
+        <h3 className="mt-1.5 text-xl font-semibold tracking-tight">
           {movies.length === 0
             ? 'Add movies to get started'
             : `${movies.length} movie${movies.length === 1 ? '' : 's'}`}
