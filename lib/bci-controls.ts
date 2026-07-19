@@ -11,7 +11,7 @@ export const BCI = {
   /** EMG jaw clench — open app, select movie, play / pause */
   JAW_CLENCH: 'Enter',
 
-  /** Eyebrow raise — exit player → OS home */
+  /** Eyebrow raise — exit / close app (Esc stand-in also works) */
   BROW_RAISE: 'ArrowUp',
 
   /** Exit — player → library; library → leave app */
@@ -30,6 +30,7 @@ export type BciSignal =
   | 'scroll-right'
   | 'jaw-clench'
   | 'brow-raise'
+  | 'frown'
   | 'exit'
   | 'long-blink'
 
@@ -61,11 +62,17 @@ export const MOVIES_CONTROLS = {
   },
 } as const
 
+/** Snake in-app: jaw clench = relative turn left; brow / Esc = exit. */
+export const SNAKE_CONTROLS = {
+  turnLeft: BCI.JAW_CLENCH,
+  exit: BCI.EXIT,
+} as const
+
 export const BCI_LABELS = {
   scrollLeft: { keys: '←', signal: 'EEG Left', action: 'Scroll' },
   scrollRight: { keys: '→', signal: 'EEG Right', action: 'Scroll' },
   jawClench: { keys: '↵', signal: 'EMG Jaw', action: 'Select / Play / Pause' },
-  browRaise: { keys: '↑', signal: 'Brow Raise', action: 'Exit to Home' },
+  browRaise: { keys: '↑ / Esc', signal: 'Brow Raise', action: 'Exit / Close app' },
   exit: { keys: 'Esc', signal: 'Exit', action: 'Close' },
   delete: { keys: 'Delete', signal: 'Delete', action: 'Remove movie' },
 } as const

@@ -1,4 +1,5 @@
 import {
+  Brain,
   Clapperboard,
   Music2,
   Globe,
@@ -31,6 +32,7 @@ export const APPS: ManifestApp[] = [
   { id: 'movies', name: 'Movies', tagline: 'Your library', icon: Clapperboard },
   { id: 'snake', name: 'Snake', tagline: 'High score chase', icon: Gamepad2 },
   { id: 'assistant', name: 'AI Assistant', tagline: 'Voice · GPT', icon: Sparkles },
+  { id: 'biosignal-lab', name: 'Biosignal Lab', tagline: 'Emotiv · EMG', icon: Brain },
   { id: 'music', name: 'Music', tagline: 'Library', icon: Disc3 },
   { id: 'maps', name: 'Maps', tagline: 'Nearby', icon: Map },
   { id: 'smartroom', name: 'Smart Room', tagline: 'Set the scene', icon: House },

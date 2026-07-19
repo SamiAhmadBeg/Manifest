@@ -14,7 +14,7 @@ import { loadHighScore, saveHighScore } from '@/lib/snake/score'
 
 const COLS = 22
 const ROWS = 16
-const TICK_MS = 140
+const TICK_MS = 280
 
 type Point = { x: number; y: number }
 type Dir = 'up' | 'right' | 'down' | 'left'
@@ -177,19 +177,23 @@ export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
         resetGame()
         return
       }
-      const next = TURN_LEFT[dirRef.current]
-      turnQueue.current.push(next)
+      // Relative left from the last queued heading so stacked clenches chain correctly.
+      const facing = turnQueue.current.at(-1) ?? dirRef.current
+      const next = TURN_LEFT[facing]
+      // At most one pending turn per tick — replace with the newest intent.
+      turnQueue.current = [next]
       onNotify('Turn left')
     }, [resetGame, onNotify])
 
     const handleKey = useCallback(
       (key: string): boolean => {
         const signal = keyToSignal(key)
-        if (signal === 'exit') {
+        if (signal === 'exit' || signal === 'frown' || signal === 'brow-raise') {
           onClose()
           onNotify('Exited Snake')
           return true
         }
+        // Jaw clench → relative turn left (Enter stand-in in keyboard mode).
         if (signal === 'jaw-clench') {
           turnLeft()
           return true
@@ -289,13 +293,13 @@ export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
                 <p className="text-sm text-muted-foreground">
                   Score {score} · Best {Math.max(highScore, score)}
                 </p>
-                <p className="text-xs font-medium text-primary">↵ to play again</p>
+                <p className="text-xs font-medium text-primary">Clench to play again</p>
               </div>
             )}
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            ↵ turn left · Esc exit
+            Clench turn left · Brow / Esc exit
           </p>
         </div>
       </>

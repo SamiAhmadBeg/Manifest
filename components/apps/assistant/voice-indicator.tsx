@@ -1,7 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import type { VoiceListenPhase } from '@/hooks/use-voice-session'
+import {
+  SILENCE_MS,
+  SPEECH_CATCH_MIN,
+  levelToCatch,
+  type VoiceListenPhase,
+} from '@/hooks/use-voice-session'
 
 const BAR_COUNT = 5
 
@@ -24,16 +29,19 @@ export function VoiceIndicator({
   const isHearing = listenPhase === 'hearing' || listenPhase === 'silence'
   const isSilence = listenPhase === 'silence'
   const silenceProgress = isSilence
-    ? Math.min(100, ((3000 - silenceMsLeft) / 3000) * 100)
+    ? Math.min(100, ((SILENCE_MS - silenceMsLeft) / SILENCE_MS) * 100)
     : 0
 
-  const levelBoost = Math.min(1, audioLevel * 12)
-  const isLoud = audioLevel > 0.008
+  const audioCatch = levelToCatch(audioLevel)
+  const levelBoost = audioCatch
+  // "Loud enough" only once the catch clears the ≥50% prompt gate.
+  const isLoud = audioCatch >= SPEECH_CATCH_MIN
+  const catchPct = Math.round(audioCatch * 100)
 
   const statusLabel = !micEnabled
     ? 'Requesting microphone…'
     : listenPhase === 'armed'
-      ? 'Mic live — start speaking'
+      ? 'Calibrating room noise — then speak'
       : listenPhase === 'hearing' || isLoud
         ? 'Hearing you…'
         : listenPhase === 'silence'
@@ -120,8 +128,11 @@ export function VoiceIndicator({
       </motion.div>
 
       {micEnabled && (
-        <p className="text-center text-[11px] tracking-wide text-muted-foreground">
-          Mic level · {Math.round(levelBoost * 100)}%
+        <p className="text-center font-mono text-[11px] tracking-wide text-muted-foreground">
+          Catch · {catchPct}% ·{' '}
+          <span className={isLoud ? 'text-primary' : undefined}>
+            need ≥{Math.round(SPEECH_CATCH_MIN * 100)}%
+          </span>
         </p>
       )}
 
@@ -168,7 +179,7 @@ export function VoiceIndicator({
         ) : (
           <p className="text-sm italic leading-relaxed text-muted-foreground">
             {micEnabled
-              ? 'Speak — bars should move with your voice'
+              ? 'Speak up (≥50% catch) — then pause 2s to send'
               : 'Allow microphone when prompted…'}
           </p>
         )}

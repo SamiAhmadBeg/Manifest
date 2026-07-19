@@ -16,6 +16,10 @@ import {
   AssistantApp,
   type AssistantAppHandle,
 } from '@/components/apps/assistant/assistant-app'
+import {
+  BiosignalLabApp,
+  type BiosignalLabAppHandle,
+} from '@/components/apps/biosignal-lab/biosignal-lab-app'
 import type { MoviesView } from '@/lib/movies/types'
 
 export function AppOpenView({
@@ -26,6 +30,7 @@ export function AppOpenView({
   snakeRef,
   smartRoomRef,
   assistantRef,
+  biosignalLabRef,
   onMoviesViewChange,
   moviesView,
 }: {
@@ -36,6 +41,7 @@ export function AppOpenView({
   snakeRef: React.RefObject<SnakeAppHandle | null>
   smartRoomRef: React.RefObject<SmartRoomAppHandle | null>
   assistantRef: React.RefObject<AssistantAppHandle | null>
+  biosignalLabRef: React.RefObject<BiosignalLabAppHandle | null>
   onMoviesViewChange: (view: MoviesView | null) => void
   moviesView: MoviesView | null
 }) {
@@ -88,6 +94,12 @@ export function AppOpenView({
             ) : app.id === 'assistant' ? (
               <AssistantApp
                 ref={assistantRef}
+                onClose={onClose}
+                onNotify={onNotify}
+              />
+            ) : app.id === 'biosignal-lab' ? (
+              <BiosignalLabApp
+                ref={biosignalLabRef}
                 onClose={onClose}
                 onNotify={onNotify}
               />

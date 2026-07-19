@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { APPS } from '@/lib/apps'
-import { keyToSignal } from '@/lib/bci-controls'
+import type { BciSignal } from '@/lib/bci-controls'
+import { BCI } from '@/lib/bci-controls'
 import type { MoviesView } from '@/lib/movies/types'
+import { BiosignalProvider, useBiosignal } from '@/components/biosignal-provider'
 import { TopBar } from '@/components/top-bar'
 import { AppCarousel } from '@/components/app-carousel'
 import { ControlsHint, type ControlsMode } from '@/components/controls-hint'
@@ -12,15 +14,30 @@ import type { MoviesAppHandle } from '@/components/apps/movies/movies-app'
 import type { SnakeAppHandle } from '@/components/apps/snake/snake-app'
 import type { SmartRoomAppHandle } from '@/components/apps/smart-room/smart-room-app'
 import type { AssistantAppHandle } from '@/components/apps/assistant/assistant-app'
+import type { BiosignalLabAppHandle } from '@/components/apps/biosignal-lab/biosignal-lab-app'
 import {
   NotificationPanel,
   type NotificationItem,
 } from '@/components/notification-panel'
+import { SsvepNavArrows } from '@/components/ssvep-nav-arrows'
+import { GazeStatusChip } from '@/components/gaze-status-chip'
+import { useFaceGaze } from '@/hooks/use-face-gaze'
 
 export function ManifestOS() {
+  return (
+    <BiosignalProvider>
+      <ManifestOSInner />
+    </BiosignalProvider>
+  )
+}
+
+function ManifestOSInner() {
+  const { state: biosignal, controlOs, isLive } = useBiosignal()
   const [activeIndex, setActiveIndex] = useState(3)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [moviesView, setMoviesView] = useState<MoviesView | null>(null)
+  const [gazeEnabled, setGazeEnabled] = useState(true)
+  const [gazeRestartKey, setGazeRestartKey] = useState(0)
   const [note, setNote] = useState<NotificationItem>({
     id: 0,
     text: 'Emotiv not connected',
@@ -30,6 +47,8 @@ export function ManifestOS() {
   const snakeRef = useRef<SnakeAppHandle>(null)
   const smartRoomRef = useRef<SmartRoomAppHandle>(null)
   const assistantRef = useRef<AssistantAppHandle>(null)
+  const biosignalLabRef = useRef<BiosignalLabAppHandle>(null)
+  const lastBiosignalAt = useRef(0)
 
   const openApp = openIndex !== null ? APPS[openIndex] : null
 
@@ -53,6 +72,19 @@ export function ManifestOS() {
     })
   }, [pushNote])
 
+  const gaze = useFaceGaze({
+    enabled: gazeEnabled && openIndex === null,
+    restartKey: gazeRestartKey,
+    onLookLeft: goPrev,
+    onLookRight: goNext,
+  })
+
+  useEffect(() => {
+    if (gaze.status === 'denied' || gaze.status === 'error') {
+      pushNote(gaze.message)
+    }
+  }, [gaze.status, gaze.message, pushNote])
+
   const openActive = useCallback(
     (index?: number) => {
       const target = index ?? activeIndex
@@ -71,6 +103,103 @@ export function ManifestOS() {
     setMoviesView(null)
   }, [pushNote])
 
+  const routeKeyToOpenApp = useCallback(
+    (key: string): boolean => {
+      if (openApp?.id === 'movies') {
+        return moviesRef.current?.handleKey(key) ?? false
+      }
+      if (openApp?.id === 'snake') {
+        return snakeRef.current?.handleKey(key) ?? false
+      }
+      if (openApp?.id === 'smartroom') {
+        return smartRoomRef.current?.handleKey(key) ?? false
+      }
+      if (openApp?.id === 'assistant') {
+        return assistantRef.current?.handleKey(key) ?? false
+      }
+      if (openApp?.id === 'biosignal-lab') {
+        return biosignalLabRef.current?.handleKey(key) ?? false
+      }
+      return false
+    },
+    [openApp],
+  )
+
+  const dispatchBiosignal = useCallback(
+    (signal: BciSignal) => {
+      if (signal === 'scroll-left') {
+        if (openIndex === null) {
+          goPrev()
+          return
+        }
+        routeKeyToOpenApp(BCI.SCROLL_LEFT)
+        return
+      }
+
+      if (signal === 'scroll-right') {
+        if (openIndex === null) {
+          goNext()
+          return
+        }
+        routeKeyToOpenApp(BCI.SCROLL_RIGHT)
+        return
+      }
+
+      if (signal === 'jaw-clench') {
+        if (openIndex === null) {
+          openActive()
+          return
+        }
+        routeKeyToOpenApp(BCI.JAW_CLENCH)
+        return
+      }
+
+      if (signal === 'frown' || signal === 'brow-raise') {
+        if (openIndex === null) return
+        // In Assistant, brow raise starts asking — not exit.
+        if (openApp?.id === 'assistant') {
+          routeKeyToOpenApp(BCI.BROW_RAISE)
+          return
+        }
+        const handled = routeKeyToOpenApp(BCI.EXIT)
+        if (!handled) closeApp()
+      }
+    },
+    [openIndex, openApp, openActive, closeApp, routeKeyToOpenApp, goPrev, goNext],
+  )
+
+  useEffect(() => {
+    if (isLive) {
+      pushNote('Emotiv live')
+      return
+    }
+    if (biosignal.phase === 'error' || biosignal.phase === 'waiting-approval') {
+      pushNote(biosignal.statusMessage)
+    }
+  }, [isLive, biosignal.phase, biosignal.statusMessage, pushNote])
+
+  useEffect(() => {
+    if (!controlOs || !biosignal.lastSignal || !biosignal.lastSignalAt) return
+    if (biosignal.lastSignalAt === lastBiosignalAt.current) return
+    lastBiosignalAt.current = biosignal.lastSignalAt
+    dispatchBiosignal(biosignal.lastSignal)
+    pushNote(
+      biosignal.lastSignal === 'jaw-clench'
+        ? 'Jaw clench'
+        : biosignal.lastSignal === 'scroll-left'
+          ? 'Look left'
+          : biosignal.lastSignal === 'scroll-right'
+            ? 'Look right'
+            : 'Brow raise',
+    )
+  }, [
+    controlOs,
+    biosignal.lastSignal,
+    biosignal.lastSignalAt,
+    dispatchBiosignal,
+    pushNote,
+  ])
+
   const controlsMode: ControlsMode = (() => {
     if (openIndex === null) return 'home'
     if (openApp?.id === 'movies') {
@@ -81,46 +210,20 @@ export function ManifestOS() {
     if (openApp?.id === 'snake') return 'snake'
     if (openApp?.id === 'smartroom') return 'smart-room'
     if (openApp?.id === 'assistant') return 'assistant'
+    if (openApp?.id === 'biosignal-lab') return 'biosignal-lab'
     return 'app'
   })()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (openIndex !== null) {
-        if (openApp?.id === 'movies') {
-          const handled = moviesRef.current?.handleKey(e.key) ?? false
-          if (handled) {
-            e.preventDefault()
-            return
-          }
+        const handled = routeKeyToOpenApp(e.key)
+        if (handled) {
+          e.preventDefault()
+          return
         }
 
-        if (openApp?.id === 'snake') {
-          const handled = snakeRef.current?.handleKey(e.key) ?? false
-          if (handled) {
-            e.preventDefault()
-            return
-          }
-        }
-
-        if (openApp?.id === 'smartroom') {
-          const handled = smartRoomRef.current?.handleKey(e.key) ?? false
-          if (handled) {
-            e.preventDefault()
-            return
-          }
-        }
-
-        if (openApp?.id === 'assistant') {
-          const handled = assistantRef.current?.handleKey(e.key) ?? false
-          if (handled) {
-            e.preventDefault()
-            return
-          }
-        }
-
-        const signal = keyToSignal(e.key)
-        if (signal === 'exit') {
+        if (e.key === 'Escape' || e.key === 'x' || e.key === 'X') {
           closeApp()
           e.preventDefault()
         }
@@ -145,7 +248,7 @@ export function ManifestOS() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [openIndex, openApp, goPrev, goNext, openActive, closeApp, pushNote])
+  }, [openIndex, goPrev, goNext, openActive, closeApp, pushNote, routeKeyToOpenApp])
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-background">
@@ -167,7 +270,41 @@ export function ManifestOS() {
         />
       </div>
 
-      <TopBar />
+      <TopBar
+        emotivLive={isLive}
+        emotivMessage={biosignal.statusMessage}
+        trailing={
+          openIndex === null ? (
+            <GazeStatusChip
+              status={gaze.status}
+              message={gaze.message}
+              enabled={gazeEnabled}
+              onToggle={() => {
+                if (
+                  gazeEnabled &&
+                  (gaze.status === 'denied' || gaze.status === 'error')
+                ) {
+                  setGazeRestartKey((k) => k + 1)
+                  pushNote('Retrying camera…')
+                  return
+                }
+                setGazeEnabled((v) => {
+                  const next = !v
+                  pushNote(next ? 'Look scroll on' : 'Look scroll off')
+                  return next
+                })
+              }}
+            />
+          ) : null
+        }
+      />
+
+      <SsvepNavArrows
+        visible={openIndex === null}
+        onLeft={goPrev}
+        onRight={goNext}
+        gazeSide={gaze.side}
+      />
 
       <div className="absolute inset-0 z-10 flex items-center justify-center [isolation:isolate]">
         <div className="h-[420px] w-full">
@@ -193,6 +330,7 @@ export function ManifestOS() {
         snakeRef={snakeRef}
         smartRoomRef={smartRoomRef}
         assistantRef={assistantRef}
+        biosignalLabRef={biosignalLabRef}
         onMoviesViewChange={(view) => setMoviesView(view)}
         moviesView={moviesView}
       />

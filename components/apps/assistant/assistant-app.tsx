@@ -14,6 +14,7 @@ import type { AssistantPhase, ChatMessage } from '@/lib/assistant/types'
 import {
   isMicrophoneSupported,
   useVoiceSession,
+  SILENCE_MS,
   type VoiceListenPhase,
 } from '@/hooks/use-voice-session'
 import { VoiceIndicator } from '@/components/apps/assistant/voice-indicator'
@@ -43,7 +44,7 @@ export const AssistantApp = forwardRef<AssistantAppHandle, AssistantAppProps>(
     const [lastReply, setLastReply] = useState('')
     const [errorMessage, setErrorMessage] = useState('')
     const [listenPhase, setListenPhase] = useState<VoiceListenPhase | null>(null)
-    const [silenceMsLeft, setSilenceMsLeft] = useState(3000)
+    const [silenceMsLeft, setSilenceMsLeft] = useState(SILENCE_MS)
     const [audioLevel, setAudioLevel] = useState(0)
     const [micEnabled, setMicEnabled] = useState(false)
     const [micWarning, setMicWarning] = useState('')
@@ -160,9 +161,14 @@ export const AssistantApp = forwardRef<AssistantAppHandle, AssistantAppProps>(
           return true
         }
 
-        if (signal === 'jaw-clench') {
+        if (signal === 'jaw-clench' || signal === 'brow-raise') {
           if (phase === 'idle' || phase === 'ready') {
             startListening()
+            onNotify(
+              signal === 'brow-raise'
+                ? 'Brow raise — ask your question'
+                : 'Jaw clench — ask your question',
+            )
             return true
           }
           if (phase === 'listening' || phase === 'thinking') return true
@@ -255,7 +261,8 @@ export const AssistantApp = forwardRef<AssistantAppHandle, AssistantAppProps>(
                       />
                     </div>
                     <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-                      Press ↵ to open the mic, then speak your question
+                      Raise your eyebrows (or press ↵) to open the mic, then ask
+                      your question — send after 2s of silence
                     </p>
                   </>
                 )}

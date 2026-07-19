@@ -145,7 +145,7 @@ export const SmartRoomApp = forwardRef<SmartRoomAppHandle, SmartRoomAppProps>(
     const handleKey = useCallback(
       (key: string): boolean => {
         const signal = keyToSignal(key)
-        if (signal === 'exit' || signal === 'brow-raise') {
+        if (signal === 'exit' || signal === 'frown' || signal === 'brow-raise') {
           onClose()
           onNotify('Exited Smart Room')
           return true

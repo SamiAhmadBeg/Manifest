@@ -1,0 +1,16 @@
+{
+  "name": "emg-bridge",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "node-red": "^5.0.1",
+    "node-red-contrib-emotiv-bci": "^2.1.5"
+  }
+}

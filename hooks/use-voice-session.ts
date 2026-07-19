@@ -2,8 +2,30 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 
-const SILENCE_MS = 3000
-const SPEECH_LEVEL = 0.008
+/** End utterance after this much quiet once speech was heard. */
+export const SILENCE_MS = 2000
+/** Absolute floor (unitless analyser level) — below this never counts as speech. */
+export const SPEECH_LEVEL_MIN = 0.012
+/** Require voice to exceed ambient noise floor by this many dB (filters fan hiss). */
+export const SPEECH_MARGIN_DB = 10
+/**
+ * Scales a raw analyser level into a normalized 0–1 "audio catch" meter
+ * (same scale the on-screen bars use). 1.0 ≈ a clear, close voice.
+ */
+export const LEVEL_TO_CATCH = 12
+/**
+ * Only accept a prompt when the audio catch is at least this strong (0–1).
+ * 0.5 = "speak at ≥50% catch" — filters the fan and quiet mumbling so the
+ * assistant only takes deliberate speech.
+ */
+export const SPEECH_CATCH_MIN = 0.5
+
+/** Raw analyser level → normalized 0–1 audio catch (clamped). */
+export function levelToCatch(level: number): number {
+  return Math.min(1, Math.max(0, level) * LEVEL_TO_CATCH)
+}
+/** Sample ambient for this long after mic arms before locking the noise floor. */
+const CALIBRATE_MS = 450
 const POLL_MS = 80
 const NO_AUDIO_WARN_MS = 2500
 const LEVEL_NOTIFY_MS = 100
@@ -83,6 +105,20 @@ function readAudioLevel(analyser: AnalyserNode): number {
   return Math.max(rms, voiceBand * 0.35)
 }
 
+/** Unitless level → approximate dBFS (0 dB ≈ full-scale analyser). */
+export function levelToDb(level: number): number {
+  return 20 * Math.log10(Math.max(level, 1e-8))
+}
+
+function isSpeechLevel(level: number, noiseFloor: number): boolean {
+  if (level < SPEECH_LEVEL_MIN) return false
+  // Require a strong, deliberate catch (≥50% of the meter) — not just fan hiss.
+  if (levelToCatch(level) < SPEECH_CATCH_MIN) return false
+  const floor = Math.max(noiseFloor, 1e-6)
+  const marginLin = Math.pow(10, SPEECH_MARGIN_DB / 20)
+  return level >= floor * marginLin
+}
+
 export function useVoiceSession({
   enabled,
   onUtterance,
@@ -129,6 +165,8 @@ export function useVoiceSession({
   const enabledRef = useRef(enabled)
   const micReadyAtRef = useRef<number | null>(null)
   const maxLevelRef = useRef(0)
+  const noiseFloorRef = useRef(SPEECH_LEVEL_MIN * 0.4)
+  const calibratingRef = useRef(true)
   const noAudioWarnedRef = useRef(false)
   const listenPhaseRef = useRef<VoiceListenPhase | null>(null)
   const lastLevelNotifyRef = useRef(0)
@@ -176,6 +214,8 @@ export function useVoiceSession({
     transcriptRef.current = ''
     micReadyAtRef.current = null
     maxLevelRef.current = 0
+    noiseFloorRef.current = SPEECH_LEVEL_MIN * 0.4
+    calibratingRef.current = true
     noAudioWarnedRef.current = false
     listenPhaseRef.current = null
     lastLevelNotifyRef.current = 0
@@ -268,7 +308,17 @@ export function useVoiceSession({
       if (!text) return
       transcriptRef.current = text
       callbacksRef.current.onTranscript?.(text)
-      markSpeechDetected()
+      // Only accept a prompt when the mic clears the ≥50% audio-catch gate.
+      // ASR alone (which happily transcribes fan hiss) is not enough.
+      if (analyserRef.current) {
+        const level = readAudioLevel(analyserRef.current)
+        if (!calibratingRef.current && isSpeechLevel(level, noiseFloorRef.current)) {
+          markSpeechDetected()
+        }
+      } else if (text.trim().length >= 12) {
+        // No analyser available (rare) — fall back to a longer transcript.
+        markSpeechDetected()
+      }
     }
 
     recognition.onerror = (event) => {
@@ -330,6 +380,8 @@ export function useVoiceSession({
       streamRef.current = stream
       micReadyAtRef.current = Date.now()
       maxLevelRef.current = 0
+      noiseFloorRef.current = SPEECH_LEVEL_MIN * 0.4
+      calibratingRef.current = true
       noAudioWarnedRef.current = false
       callbacksRef.current.onMicReady?.()
 
@@ -364,23 +416,40 @@ export function useVoiceSession({
         if (level > maxLevelRef.current) maxLevelRef.current = level
 
         const now = Date.now()
+        const readyAt = micReadyAtRef.current ?? now
+
+        // Lock ambient floor after a short quiet sample (fan / room hiss).
+        if (calibratingRef.current) {
+          noiseFloorRef.current = Math.max(noiseFloorRef.current, level)
+          if (now - readyAt >= CALIBRATE_MS) {
+            calibratingRef.current = false
+            // Pad floor slightly so steady fan stays under the speech margin.
+            noiseFloorRef.current = Math.max(
+              noiseFloorRef.current * 1.15,
+              SPEECH_LEVEL_MIN * 0.35,
+            )
+          }
+        }
+
         if (now - lastLevelNotifyRef.current >= LEVEL_NOTIFY_MS) {
           lastLevelNotifyRef.current = now
           callbacksRef.current.onAudioLevel?.(level)
         }
 
+        const speechGate = isSpeechLevel(level, noiseFloorRef.current)
+
         if (
-          micReadyAtRef.current &&
           !noAudioWarnedRef.current &&
           !hasSpokenRef.current &&
-          now - micReadyAtRef.current > NO_AUDIO_WARN_MS &&
-          maxLevelRef.current < SPEECH_LEVEL * 0.5
+          now - readyAt > NO_AUDIO_WARN_MS &&
+          maxLevelRef.current < SPEECH_LEVEL_MIN * 0.4
         ) {
           noAudioWarnedRef.current = true
           callbacksRef.current.onNoAudioDetected?.()
         }
 
-        if (level > SPEECH_LEVEL) {
+        // Ignore speech detection while calibrating ambient.
+        if (!calibratingRef.current && speechGate) {
           markSpeechDetected()
           return
         }

@@ -22,14 +22,15 @@ export type ControlsMode =
   | 'snake'
   | 'smart-room'
   | 'assistant'
+  | 'biosignal-lab'
 
 function controlsForMode(mode: ControlsMode): Control[] {
   switch (mode) {
     case 'home':
       return [
-        { keys: BCI_LABELS.scrollLeft.keys, label: 'Previous' },
-        { keys: BCI_LABELS.scrollRight.keys, label: 'Next' },
-        { keys: BCI_LABELS.jawClench.keys, label: 'Open' },
+        { keys: '‹ look', label: 'Scroll left' },
+        { keys: '› look', label: 'Scroll right' },
+        { keys: BCI_LABELS.jawClench.keys, label: 'Open (clench)' },
         { keys: 'X', label: 'Exit' },
       ]
     case 'movies-library':
@@ -38,12 +39,12 @@ function controlsForMode(mode: ControlsMode): Control[] {
         { keys: '→', label: 'Next' },
         { keys: '↵', label: 'Play' },
         { keys: 'Delete', label: 'Remove' },
-        { keys: 'Esc', label: 'Close' },
+        { keys: 'Esc / brow', label: 'Close' },
       ]
     case 'movies-player':
       return [
         { keys: '↵', label: 'Pause' },
-        { keys: 'Esc', label: 'Library' },
+        { keys: 'Esc / brow', label: 'Library' },
       ]
     case 'movies-naming':
       return [
@@ -52,25 +53,30 @@ function controlsForMode(mode: ControlsMode): Control[] {
       ]
     case 'snake':
       return [
-        { keys: '↵', label: 'Turn left' },
-        { keys: 'Esc', label: 'Exit' },
+        { keys: BCI_LABELS.jawClench.keys, label: 'Clench · turn left' },
+        { keys: 'Esc / brow', label: 'Exit' },
       ]
     case 'smart-room':
       return [
         { keys: '←', label: 'Prev' },
         { keys: '→', label: 'Next' },
         { keys: '↵', label: 'Select' },
-        { keys: '↑', label: 'Exit' },
+        { keys: 'Esc / brow', label: 'Exit' },
       ]
     case 'assistant':
       return [
-        { keys: '↵', label: 'Start mic' },
+        { keys: 'brow / ↵', label: 'Ask question' },
         { keys: 'Esc', label: 'Exit' },
+      ]
+    case 'biosignal-lab':
+      return [
+        { keys: '↵', label: 'Toggle OS control' },
+        { keys: 'Esc / brow', label: 'Exit' },
       ]
     case 'app':
     default:
       return [
-        { keys: BCI_LABELS.exit.keys, label: 'Close' },
+        { keys: 'Esc / brow', label: 'Close' },
         { keys: 'X', label: 'Exit' },
       ]
   }

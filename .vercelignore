@@ -1,0 +1,4 @@
+# Local-only EMG/BCI tooling — not part of the Next.js app build.
+# The Emotiv bridge runs on your machine next to the headset; it can't run on Vercel.
+bridge/
+emg-bridge/
