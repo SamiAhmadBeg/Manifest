@@ -1,0 +1,11 @@
+The Problem
+
+Severe motor disability is a large, growing access market — but today's tools are costly, slow, and not built as a true operating system.
+
+• 34,290 Americans are projected to be living with ALS in 2025, rising to 36,000+ by 2030. (CDC)
+
+• 308,620 Americans live with traumatic spinal cord injury; ~18,421 new cases occur each year. (NSCISC 2025)
+
+• Nearly 60% of recent SCI cases are tetraplegia — arms and hands are affected (~184,000 people). (NSCISC 2025, derived)
+
+• Today's communication stack is expensive and slow: AAC devices often cost $1,000–$8,000, funding takes 30–60 days, and repairs can take 2+ months. (Tobii Dynavox)

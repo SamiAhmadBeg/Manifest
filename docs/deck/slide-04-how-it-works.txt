@@ -1,0 +1,14 @@
+How It Works
+
+Your body is the input layer.
+
+• Look left / right — webcam + MediaPipe tracks head movement to scroll and navigate (runs in the browser).
+
+• Jaw clench / brow raise — Emotiv facial signals for enter, exit, and asking the assistant (local bridge + headset).
+
+• Voice — AI assistant with a noise-aware gate (≥50% audio catch) and 2 seconds of silence before it responds.
+
+• Personal calibrator (in progress) — short onboarding learns your thresholds and saves your profile.
+
+Today: face + voice + facial EMG.
+Next: EEG motor imagery as a first-class input.

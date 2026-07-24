@@ -1,0 +1,63 @@
+MANIFEST — SPEAKER NOTES
+========================
+
+SLIDE 1 — TITLE
+---------------
+One-liner: Manifest turns your face, voice, and headset into a full desktop — games, movies, assistant — no mouse.
+
+• Working prototype, not a concept.
+• Two audiences: people who need access (ALS / tetraplegia) and BCI hardware owners with no real software.
+
+
+SLIDE 2 — PROBLEM
+-----------------
+• ALS = emotional hook + growing (~34k → 36k+).
+• SCI is ~9× larger than ALS alone (~309k).
+• ~60% tetraplegia ≈ ~184k people who cannot use their hands — core Manifest user.
+• Price pain is not just sticker: insurance paperwork, 30–60 day wait, 2+ month repairs, surprise bills.
+• BCI headsets (~$800 hardware) ship with SDKs and training — not a daily OS.
+• Tobii / eye-gaze = communication devices ($1k–$8k+). Manifest = full OS.
+
+Do NOT put on slide (Q&A only):
+• 5.4M broader U.S. paralysis (Reeve Foundation — older, broader than SCI).
+• Exact % of ALS patients who lose speech (no strong single stat — say "clinical consensus").
+• 184k tetraplegia is derived (308,620 × 59.7%), not a direct NSCISC line item.
+
+
+SLIDE 3 — IDEA
+--------------
+• Missing layer: $800 headset + no OS vs $8k eye-gaze rig + months of paperwork.
+• Pretrained = look L/R, jaw enter, brow back/ask, voice — works day one.
+• Calibrator = moat: your thresholds, saved profile.
+• Not replacing clinical AAC — complementing with faster, cheaper, fuller experience.
+
+
+SLIDE 4 — HOW IT WORKS
+----------------------
+• MediaPipe runs in-browser (WASM) — no cloud video upload.
+• "Gaze" today = head yaw, not pupil tracking — honest caveat.
+• EMG needs local bridge + headset; hosted Vercel site = face + voice work today.
+• Voice: fan was triggering STT — added ≥50% catch gate + 2s silence.
+• Demo: home carousel → look scroll → jaw open → brow ask → pause → answer.
+
+
+SLIDE 5 — FUTURE
+----------------
+• Calibrator v1: neutral baseline → repeated gestures → auto thresholds.
+• EEG licensing in progress (Cortex Premium scopes).
+• End state: face + voice + EMG + EEG = redundant inputs.
+• Regulatory: consumer/research prototype today.
+
+
+60-SECOND CLOSE
+---------------
+"Thirty-four thousand Americans have ALS, heading toward thirty-six thousand. Add three hundred thousand with spinal cord injury — and about a hundred and eighty thousand with tetraplegia who've lost use of their hands. Today they wait months for thousand-dollar communication rigs that can take months to repair. Meanwhile, eight-hundred-dollar BCI headsets ship with no real operating system. Manifest is that OS — look to scroll, clench to enter, speak to your assistant, with a calibrator that learns you. We're live on face and voice; EEG is next. I'd love your feedback and introductions."
+
+
+HARD QUESTIONS
+--------------
+Medical device?     → Consumer/research prototype today.
+Why not Tobii?      → Tobii = AAC; Manifest = full OS + multi-input BCI.
+EEG working now?    → Face + voice yes; raw EEG needs license — in progress.
+Privacy?            → Face/voice local in browser; assistant uses API key.
+Who pays?           → ALS families, disability orgs, BCI buyers, researchers.

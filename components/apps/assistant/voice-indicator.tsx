@@ -34,7 +34,7 @@ export function VoiceIndicator({
 
   const audioCatch = levelToCatch(audioLevel)
   const levelBoost = audioCatch
-  // "Loud enough" only once the catch clears the ≥50% prompt gate.
+  // "Loud enough" only once the catch clears the prompt gate.
   const isLoud = audioCatch >= SPEECH_CATCH_MIN
   const catchPct = Math.round(audioCatch * 100)
 
@@ -179,7 +179,7 @@ export function VoiceIndicator({
         ) : (
           <p className="text-sm italic leading-relaxed text-muted-foreground">
             {micEnabled
-              ? 'Speak up (≥50% catch) — then pause 2s to send'
+              ? `Speak up (≥${Math.round(SPEECH_CATCH_MIN * 100)}% catch) — then pause 2s to send`
               : 'Allow microphone when prompted…'}
           </p>
         )}

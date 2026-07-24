@@ -15,10 +15,10 @@ export const SPEECH_MARGIN_DB = 10
 export const LEVEL_TO_CATCH = 12
 /**
  * Only accept a prompt when the audio catch is at least this strong (0–1).
- * 0.5 = "speak at ≥50% catch" — filters the fan and quiet mumbling so the
+ * 0.6 = "speak at ≥60% catch" — filters AC/fan hiss and quiet mumbling so the
  * assistant only takes deliberate speech.
  */
-export const SPEECH_CATCH_MIN = 0.5
+export const SPEECH_CATCH_MIN = 0.6
 
 /** Raw analyser level → normalized 0–1 audio catch (clamped). */
 export function levelToCatch(level: number): number {
@@ -112,7 +112,7 @@ export function levelToDb(level: number): number {
 
 function isSpeechLevel(level: number, noiseFloor: number): boolean {
   if (level < SPEECH_LEVEL_MIN) return false
-  // Require a strong, deliberate catch (≥50% of the meter) — not just fan hiss.
+  // Require a strong, deliberate catch (≥60% of the meter) — not just AC/fan hiss.
   if (levelToCatch(level) < SPEECH_CATCH_MIN) return false
   const floor = Math.max(noiseFloor, 1e-6)
   const marginLin = Math.pow(10, SPEECH_MARGIN_DB / 20)
@@ -308,7 +308,7 @@ export function useVoiceSession({
       if (!text) return
       transcriptRef.current = text
       callbacksRef.current.onTranscript?.(text)
-      // Only accept a prompt when the mic clears the ≥50% audio-catch gate.
+      // Only accept a prompt when the mic clears the ≥60% audio-catch gate.
       // ASR alone (which happily transcribes fan hiss) is not enough.
       if (analyserRef.current) {
         const level = readAudioLevel(analyserRef.current)

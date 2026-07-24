@@ -80,8 +80,8 @@ export const INITIAL_BIOSIGNAL_STATE: BiosignalState = {
   uAct: 'neutral',
   lPow: 0,
   uPow: 0,
-  jawThreshold: 0.1,
-  browThreshold: 0.62,
+  jawThreshold: 0.04,
+  browThreshold: 1.0,
   lastSignal: null,
   lastSignalAt: null,
 }

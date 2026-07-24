@@ -79,7 +79,11 @@ export function TopBar({
             className={`size-3.5 shrink-0 ${emotivLive ? 'text-emerald-600' : 'text-primary'}`}
           />
           <span className="truncate text-xs font-medium tracking-wide">
-            {emotivLive ? 'Emotiv connected' : 'Emotiv not connected'}
+            {emotivLive
+              ? 'Emotiv connected'
+              : emotivMessage && emotivMessage !== 'Bridge offline — run npm run bridge'
+                ? emotivMessage
+                : 'Emotiv not connected'}
           </span>
         </div>
       </motion.div>

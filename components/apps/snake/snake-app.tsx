@@ -10,11 +10,14 @@ import {
 } from 'react'
 import { Gamepad2, X } from 'lucide-react'
 import { keyToSignal } from '@/lib/bci-controls'
+import { useBiosignal } from '@/components/biosignal-provider'
 import { loadHighScore, saveHighScore } from '@/lib/snake/score'
 
 const COLS = 22
 const ROWS = 16
 const TICK_MS = 280
+/** Faster than bridge gesture cooldown (900ms) so in-game turns keep up with the snake. */
+const EMG_TURN_COOLDOWN_MS = 320
 
 type Point = { x: number; y: number }
 type Dir = 'up' | 'right' | 'down' | 'left'
@@ -71,6 +74,7 @@ export type SnakeAppProps = {
 
 export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
   function SnakeApp({ onClose, onNotify }, ref) {
+    const { state: biosignal, controlOs, isLive } = useBiosignal()
     const [snake, setSnake] = useState<Point[]>(() => initialState().snake)
     const [food, setFood] = useState<Point>(() => initialState().food)
     const [score, setScore] = useState(0)
@@ -83,6 +87,9 @@ export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
     const foodRef = useRef(food)
     const scoreRef = useRef(score)
     const phaseRef = useRef(phase)
+    const jawWasOver = useRef(true)
+    const lastEmgTurnAt = useRef(0)
+    const lastBrowAt = useRef(0)
 
     useEffect(() => {
       snakeRef.current = snake
@@ -185,6 +192,52 @@ export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
       onNotify('Turn left')
     }, [resetGame, onNotify])
 
+    // In-game jaw: read live telemetry (8 Hz) with a short cooldown. Bridge discrete
+    // events are throttled ~900ms — fine for open/select, too slow for Snake turns.
+    useEffect(() => {
+      if (!controlOs || !isLive) return
+      const threshold = biosignal.jawThreshold
+      const over =
+        biosignal.lAct === 'clench' && biosignal.jaw >= threshold
+      const now = Date.now()
+      if (
+        over &&
+        !jawWasOver.current &&
+        now - lastEmgTurnAt.current >= EMG_TURN_COOLDOWN_MS
+      ) {
+        lastEmgTurnAt.current = now
+        turnLeft()
+      }
+      jawWasOver.current = over
+    }, [
+      biosignal.jaw,
+      biosignal.jawThreshold,
+      biosignal.lAct,
+      controlOs,
+      isLive,
+      turnLeft,
+    ])
+
+    useEffect(() => {
+      if (!controlOs || !biosignal.lastSignal || !biosignal.lastSignalAt) return
+      if (biosignal.lastSignalAt === lastBrowAt.current) return
+      if (
+        biosignal.lastSignal !== 'brow-raise' &&
+        biosignal.lastSignal !== 'frown'
+      ) {
+        return
+      }
+      lastBrowAt.current = biosignal.lastSignalAt
+      onClose()
+      onNotify('Exited Snake')
+    }, [
+      biosignal.lastSignal,
+      biosignal.lastSignalAt,
+      controlOs,
+      onClose,
+      onNotify,
+    ])
+
     const handleKey = useCallback(
       (key: string): boolean => {
         const signal = keyToSignal(key)
@@ -194,13 +247,14 @@ export const SnakeApp = forwardRef<SnakeAppHandle, SnakeAppProps>(
           return true
         }
         // Jaw clench → relative turn left (Enter stand-in in keyboard mode).
-        if (signal === 'jaw-clench') {
-          turnLeft()
-          return true
-        }
+      if (signal === 'jaw-clench') {
+        if (controlOs && isLive) return true
+        turnLeft()
+        return true
+      }
         return false
       },
-      [onClose, onNotify, turnLeft],
+      [onClose, onNotify, turnLeft, controlOs, isLive],
     )
 
     useImperativeHandle(ref, () => ({ handleKey }), [handleKey])

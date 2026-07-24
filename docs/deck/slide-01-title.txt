@@ -1,0 +1,5 @@
+Manifest
+
+Biosignal-native OS
+
+Control a computer without hands

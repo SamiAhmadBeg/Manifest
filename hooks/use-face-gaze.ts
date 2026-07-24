@@ -27,6 +27,67 @@ const INITIAL: GazeState = {
   message: 'Gaze off',
 }
 
+const MEDIAPIPE_WASM =
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm'
+
+/** MediaPipe WASM logs INFO/WARN to console.error — Next dev overlay treats that as a crash. */
+function isMediaPipeNoise(args: unknown[]): boolean {
+  const msg = args.map((a) => String(a)).join(' ')
+  return /TensorFlow Lite|XNNPACK|face_landmarker|gl_context|vision_wasm|Created TensorFlow/i.test(
+    msg,
+  )
+}
+
+function suppressMediaPipeConsole<T>(fn: () => T): T {
+  const origError = console.error
+  const origWarn = console.warn
+  console.error = (...args: unknown[]) => {
+    if (!isMediaPipeNoise(args)) origError(...args)
+  }
+  console.warn = (...args: unknown[]) => {
+    if (!isMediaPipeNoise(args)) origWarn(...args)
+  }
+  try {
+    return fn()
+  } finally {
+    console.error = origError
+    console.warn = origWarn
+  }
+}
+
+async function suppressMediaPipeConsoleAsync<T>(fn: () => Promise<T>): Promise<T> {
+  const origError = console.error
+  const origWarn = console.warn
+  console.error = (...args: unknown[]) => {
+    if (!isMediaPipeNoise(args)) origError(...args)
+  }
+  console.warn = (...args: unknown[]) => {
+    if (!isMediaPipeNoise(args)) origWarn(...args)
+  }
+  try {
+    return await fn()
+  } finally {
+    console.error = origError
+    console.warn = origWarn
+  }
+}
+
+function createFaceLandmarker(fileset: Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>) {
+  const model =
+    'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+  const base = {
+    runningMode: 'VIDEO' as const,
+    numFaces: 1,
+    outputFaceBlendshapes: false,
+    outputFacialTransformationMatrixes: false,
+  }
+  // CPU first — more reliable on macOS; GPU path spams gl_context warnings in dev.
+  return FaceLandmarker.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: model, delegate: 'CPU' },
+    ...base,
+  })
+}
+
 /**
  * Look score from Face Landmarker.
  * Positive → screen left (‹); negative → screen right (›).
@@ -189,35 +250,12 @@ export function useFaceGaze({
         await video.play()
         if (cancelled) return
 
-        const fileset = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm',
-        )
+        const fileset = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM)
         if (cancelled) return
 
-        let landmarker: FaceLandmarker
-        try {
-          landmarker = await FaceLandmarker.createFromOptions(fileset, {
-            baseOptions: {
-              modelAssetPath:
-                'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-              delegate: 'GPU',
-            },
-            runningMode: 'VIDEO',
-            numFaces: 1,
-            outputFaceBlendshapes: false,
-            outputFacialTransformationMatrixes: false,
-          })
-        } catch {
-          landmarker = await FaceLandmarker.createFromOptions(fileset, {
-            baseOptions: {
-              modelAssetPath:
-                'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-              delegate: 'CPU',
-            },
-            runningMode: 'VIDEO',
-            numFaces: 1,
-          })
-        }
+        const landmarker = await suppressMediaPipeConsoleAsync(() =>
+          createFaceLandmarker(fileset),
+        )
         if (cancelled) {
           landmarker.close()
           return
@@ -243,7 +281,9 @@ export function useFaceGaze({
             lastVideoTime.current = v.currentTime
             let result: FaceLandmarkerResult
             try {
-              result = lm.detectForVideo(v, performance.now())
+              result = suppressMediaPipeConsole(() =>
+                lm.detectForVideo(v, performance.now()),
+              )
             } catch {
               rafRef.current = requestAnimationFrame(loop)
               return

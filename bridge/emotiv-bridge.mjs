@@ -53,11 +53,11 @@ function parsePowThreshold(value, fallback) {
 // Basic License / fac stream only — no Professional EEG / raw eeg required (Cortex license).
 const JAW_POW_THRESHOLD = parsePowThreshold(
   process.env.BIOSIGNAL_JAW_THRESHOLD,
-  0.1,
+  0.04,
 )
 const BROW_POW_THRESHOLD = parsePowThreshold(
   process.env.BIOSIGNAL_BROW_THRESHOLD ?? process.env.BIOSIGNAL_FROWN_THRESHOLD,
-  0.62,
+  1.0,
 )
 // Hysteresis release = must drop before the same gesture can fire again (rising edge).
 const JAW_RELEASE = parsePowThreshold(
@@ -137,6 +137,12 @@ function friendlyError(message) {
       'with "Enable EEG for Professional devices" OFF, then update .env.local.'
     )
   }
+  if (message.includes('-32033') || /logged in/i.test(message)) {
+    return 'Sign in to EMOTIV Launcher (quit & reopen if stuck), then wait for bridge to reconnect.'
+  }
+  if (/timeout/i.test(message)) {
+    return `${message} — quit EMOTIV Launcher fully (Cmd+Q), reopen, sign in, connect headset.`
+  }
   return message
 }
 
@@ -152,14 +158,27 @@ function broadcastStatus(phase, message, extra = {}) {
   })
 }
 
-function cortexSend(method, params = {}) {
+function cortexSend(method, params = {}, timeoutMs = 20000) {
   return new Promise((resolve, reject) => {
     if (!cortexWs || cortexWs.readyState !== WebSocket.OPEN) {
       reject(new Error('Cortex socket not open'))
       return
     }
     const id = rpcId++
-    pending.set(id, { resolve, reject })
+    const timer = setTimeout(() => {
+      pending.delete(id)
+      reject(new Error(`Cortex timeout on ${method}`))
+    }, timeoutMs)
+    pending.set(id, {
+      resolve: (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      },
+      reject: (err) => {
+        clearTimeout(timer)
+        reject(err)
+      },
+    })
     cortexWs.send(JSON.stringify({ id, jsonrpc: '2.0', method, params }))
   })
 }
@@ -168,17 +187,35 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-async function requestAccessWithRetry(maxAttempts = 30) {
+async function requestAccessWithRetry(maxAttempts = 60) {
   broadcastStatus('waiting-approval', 'Approve Manifest in Emotiv Launcher…')
   for (let i = 0; i < maxAttempts; i++) {
-    const result = await cortexSend('requestAccess', {
-      clientId: CLIENT_ID,
-      clientSecret: CLIENT_SECRET,
-    })
-    if (result?.accessGranted) return result
-    const msg = result?.message ?? 'Waiting for Launcher approval…'
-    broadcastStatus('waiting-approval', msg)
-    await sleep(2000)
+    try {
+      const result = await cortexSend(
+        'requestAccess',
+        {
+          clientId: CLIENT_ID,
+          clientSecret: CLIENT_SECRET,
+        },
+        45_000,
+      )
+      if (result?.accessGranted) return result
+      const msg = result?.message ?? 'Waiting for Launcher approval…'
+      console.log(`[bridge] requestAccess ${i + 1}/${maxAttempts}:`, msg)
+      broadcastStatus('waiting-approval', msg)
+    } catch (err) {
+      const msg = String(err.message ?? err)
+      console.warn(`[bridge] requestAccess ${i + 1}/${maxAttempts}:`, msg)
+      if (/32033|logged in|timeout/i.test(msg)) {
+        broadcastStatus(
+          'waiting-approval',
+          'Sign in to EMOTIV Launcher (Cmd+Q → reopen if stuck)…',
+        )
+      } else {
+        broadcastStatus('waiting-approval', friendlyError(msg))
+      }
+    }
+    await sleep(3000)
   }
   throw new Error('Launcher approval timed out. Open Emotiv Launcher and approve access.')
 }
@@ -335,14 +372,30 @@ async function startCortexSession() {
     cortexWs.once('error', reject)
   })
 
+  // Cortex runs getOSUserInfoFromConnectionPort on every new socket (~15–20s) before
+  // requestAccess is handled. Calling too early → timeout and stuck "Approve in Launcher".
+  broadcastStatus('connecting', 'Cortex warming up (~20s)…')
+  await sleep(18_000)
+
   await requestAccessWithRetry()
 
   broadcastStatus('authorizing', 'Authorizing…')
-  const auth = await cortexSend('authorize', {
-    clientId: CLIENT_ID,
-    clientSecret: CLIENT_SECRET,
-    debit: 1,
-  })
+  let auth
+  try {
+    auth = await cortexSend('authorize', {
+      clientId: CLIENT_ID,
+      clientSecret: CLIENT_SECRET,
+      debit: 1,
+    })
+  } catch (err) {
+    const msg = String(err.message ?? err)
+    if (/32033|logged in/i.test(msg)) {
+      throw new Error(
+        'You must be logged in before calling this request. Quit EMOTIV Launcher (Cmd+Q), reopen, sign in, connect headset.',
+      )
+    }
+    throw err
+  }
   cortexToken = auth.cortexToken
 
   await openFacSession()
@@ -479,7 +532,7 @@ httpServer.listen(BRIDGE_PORT, () => {
       console.error('[bridge]', msg)
       broadcastStatus('error', err.message)
       // Keep retrying — do not exit; Manifest UI stays attached to :8765
-      setTimeout(boot, 4000)
+      setTimeout(boot, 8000)
     })
   boot()
 })

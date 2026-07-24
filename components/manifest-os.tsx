@@ -150,12 +150,15 @@ function ManifestOSInner() {
           openActive()
           return
         }
+        // Snake reads live jaw telemetry for faster in-game turns.
+        if (openApp?.id === 'snake') return
         routeKeyToOpenApp(BCI.JAW_CLENCH)
         return
       }
 
       if (signal === 'frown' || signal === 'brow-raise') {
         if (openIndex === null) return
+        if (openApp?.id === 'snake') return
         // In Assistant, brow raise starts asking — not exit.
         if (openApp?.id === 'assistant') {
           routeKeyToOpenApp(BCI.BROW_RAISE)

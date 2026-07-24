@@ -1,0 +1,37 @@
+MANIFEST — BACKUP STATS (optional slide or Q&A)
+================================================
+
+ALS (U.S.)
+• 34,290 projected cases in 2025 (10.1 per 100,000) — CDC 2025
+• 33,000 in 2022 → 36,000+ by 2030 — CDC / Mehta et al. 2025
+• ~5,000 new diagnoses per year — CDC 2026
+• 1.44 per 100,000 incidence — CDC dashboard (underlying years lag)
+
+ALS (global)
+• 5.05 per 100,000 pooled prevalence — BMJ systematic review 2026
+• 1.65 per 100,000 person-years incidence — same source
+
+Spinal cord injury (U.S.)
+• 308,620 living with traumatic SCI (range 259,374–393,913) — NSCISC / MSKTC 2025
+• 18,421 new cases per year — NSCISC / MSKTC 2025
+• 59.7% tetraplegia / 39.9% paraplegia — NSCISC / MSKTC 2025
+• ~184,000 tetraplegia (derived: 308,620 × 59.7%)
+• ~123,000 paraplegia (derived: 308,620 × 39.9%)
+
+Broader paralysis
+• ~5.4 million Americans (~1 in 50) — Reeve Foundation (older study, broader than SCI)
+
+Cost & friction
+• AAC devices: $1,000–$8,000 — industry estimate
+• Funding: 30–60 days — Tobii Dynavox 2025
+• Device lifespan: 5+ years expected — Tobii Dynavox
+• Repairs: 2+ months — Tobii Dynavox
+• Surprise bills: e.g. $2,000 if reimbursement wrong — Tobii Dynavox (anecdotal)
+
+BCI gap
+• EmotivBCI = trained mental commands + facial/head — not a daily OS
+• OpenBCI = open-source neurotech toolkit — not turnkey OS
+• Consumer headset hardware ~$800 — needs second-pass SKU pricing
+
+Killer comparison (one line)
+ALS ~34k growing to 36k+ · SCI ~309k · tetraplegia ~184k · AAC $1k–$8k + months of friction · BCI headset ~$800 with no OS · Manifest = the missing software layer.

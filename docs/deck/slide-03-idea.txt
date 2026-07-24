@@ -1,0 +1,11 @@
+The Idea
+
+Manifest — inexpensive, personal, plug-and-play.
+
+• A biosignal-native OS: scroll, open apps, play games, watch movies, and talk to an AI assistant — no mouse or keyboard.
+
+• Pretrained controls out of the box, plus a personal calibrator that learns your signals — not lab averages.
+
+• Two markets:
+  — Access for ALS and tetraplegia (hands-free computing people can actually use)
+  — A sandbox for BCI headset owners (no more build-everything-from-scratch)
